@@ -10,6 +10,7 @@ from utils.losses import sq_distance_mat
 from auto_encoder.tfn_capsules import TFN
 from auto_encoder.tfn_capsules_multi_frame import TFN_multi
 from auto_encoder.tfn_capsules_multi_frame_scale_translation import TFN_all
+from auto_encoder.condor_partial import TFN_all
 from network_utils.pooling import kdtree_indexing, aligned_kdtree_indexing, kdtree_indexing_, aligned_kdtree_indexing_, kd_pooling_1d
 from tensorflow.keras.layers import LeakyReLU
 import numpy as np

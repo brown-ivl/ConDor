@@ -43,15 +43,16 @@ def orthonormalize_basis(basis, pos_det = False):
     '''
 
     s, u, v = tf.linalg.svd(basis, full_matrices=True)
-    orth_basis = tf.matmul(u, v, transpose_b=True)
-
+    orth_basis = tf.stop_gradient(tf.matmul(u, v, transpose_b=True))
+    print(orth_basis.shape, "check")
     if pos_det == True:
     
         determinant = tf.linalg.det(orth_basis)    
-        s_new = tf.cond(determinant < tf.constant(0.0), lambda: tf.constant([[1.0, 1.0, -1.0]]), lambda: tf.constant([[1.0, 1.0, 1.0]]))
-
+        #s_new = tf.cond(determinant < tf.constant(0.0), lambda: tf.constant([[1.0, 1.0, -1.0]]), lambda: tf.constant([[1.0, 1.0, 1.0]]))
+        _1 = tf.ones_like(determinant)
+        s_new = tf.stop_gradient(tf.stack([_1, _1, determinant], axis = -1))
         orth_basis = tf.matmul(u, tf.matmul(tf.linalg.diag(s_new), v, adjoint_b=True))
-    
+    print(orth_basis.shape)
     return orth_basis
 
 

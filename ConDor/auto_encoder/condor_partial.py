@@ -327,7 +327,7 @@ class TFN_all(tf.keras.Model):
         translation = tf.stack([translation[:, 2], translation[:, 0], translation[:, 1]], axis = -1)
         translation_list.append(translation)
         
-        print(translation_list[0].shape, "Translation prediction shape")
+        #print(translation_list[0].shape, "Translation prediction shape")
     
         latent_code = apply_mlp(y, self.code_mlp)
         latent_code = self.code_layer(latent_code)
@@ -346,7 +346,14 @@ class TFN_all(tf.keras.Model):
             points_code.append(p)
             if int(l) == 1:
                 # Ensuring positive determinant
-                p = tf.einsum('bmi,bvmj->bvij', orthonormalize_basis(latent_code[l], pos_det = True), z[int(l)])
+                #print(latent_code[l].shape, z[int(l)], "shapes")
+                p = tf.einsum('bmi,bvmj->bvij', orthonormalize_basis(latent_code[l][:, :, :3], pos_det = True), z[int(l)])
+                #p = tf.einsum('bmi,bvmj->bvij', latent_code[l], z[int(l)])
+                shape = list(p.shape)
+                shape = shape[:-1]
+                shape[-1] = -1
+                p = tf.reshape(p, shape)
+                #print(p.shape)
                 points_inv = p
 
         points_code = tf.concat(points_code, axis=-1)
@@ -357,6 +364,7 @@ class TFN_all(tf.keras.Model):
         # points_inv = apply_mlp(points_code, self.points_inv_mlp)
         points_inv = self.points_inv_layer(points_inv)
 
+        #print(points_inv.shape, "points_invs")
 
         out = {"translation": translation_list, "caps": capsules, "points_inv": points_inv, "basis_list": basis_list}
         return out
