@@ -3,14 +3,14 @@ from spherical_harmonics.kernels import tf_eval_monom_basis, tf_monom_basis_offs
 from spherical_harmonics.kernels import real_spherical_harmonic, zernike_kernel_3D, tf_zernike_kernel_basis
 from spherical_harmonics.kernels import A, B, associated_legendre_polynomial
 from utils.pointclouds_utils import generate_3d
-from group_points import GroupPoints
-from sparse_grid_sampling_eager import GridSampler, GridPooling, extract_batch_idx
-from pooling import kd_pooling_1d, kd_median_sampling, kdtree_indexing, aligned_kdtree_indexing
+from network_utils.group_points import GroupPoints
+from network_utils.sparse_grid_sampling_eager import GridSampler, GridPooling, extract_batch_idx
+from network_utils.pooling import kd_pooling_1d, kd_median_sampling, kdtree_indexing, aligned_kdtree_indexing
 from utils.pointclouds_utils import np_kd_tree_idx, pc_batch_preprocess
 from data_providers.provider import Provider
 from data_providers.classification_datasets import datsets_list
 from spherical_harmonics.clebsch_gordan_decomposition import tf_clebsch_gordan_decomposition
-from pooling import extract_samples_slices
+from network_utils.pooling import extract_samples_slices
 from time import time
 from sklearn.neighbors import NearestNeighbors
 # from unocs.train import lexicographic_ordering
