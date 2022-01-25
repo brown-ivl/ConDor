@@ -8,7 +8,7 @@ from data_providers.classification_datasets import datsets_list
 from utils.losses import hausdorff_distance_l1, hausdorff_distance_l2, chamfer_distance_l1, chamfer_distance_l2, orthogonality_loss, tf_directional_loss, l2_loss_, equilibrium_loss, localization_loss, localization_loss_new
 from utils.losses import sq_distance_mat
 #from auto_encoder.tfn_capsules import TFN
-from pooling import kdtree_indexing, aligned_kdtree_indexing, kdtree_indexing_, aligned_kdtree_indexing_, kd_pooling_1d
+from network_utils.pooling import kdtree_indexing, aligned_kdtree_indexing, kdtree_indexing_, aligned_kdtree_indexing_, kd_pooling_1d
 from tensorflow.keras.layers import LeakyReLU
 import numpy as np
 import logging

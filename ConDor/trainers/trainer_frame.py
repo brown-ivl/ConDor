@@ -9,7 +9,7 @@ from trainers.trainer_siamese import Trainer
 from utils.helper_functions import slice_idx_data
 import open3d as o3d
 from utils.vis_utils import save_pointcloud, distribute_capsules
-from pooling import kdtree_indexing
+from network_utils.pooling import kdtree_indexing
 
 
 class TrainerFrame(Trainer):

@@ -9,7 +9,7 @@ import numpy as np
 import h5py
 from utils.pointclouds_utils import rotate_point_cloud, normalize_point_cloud
 import pandas as pd
-from pooling import kdtree_indexing, aligned_kdtree_indexing, kdtree_indexing_, aligned_kdtree_indexing_, kd_pooling_1d
+from network_utils.pooling import kdtree_indexing, aligned_kdtree_indexing, kdtree_indexing_, aligned_kdtree_indexing_, kd_pooling_1d
 
 # from data_providers.provider import Provider
 

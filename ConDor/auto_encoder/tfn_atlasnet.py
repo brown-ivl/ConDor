@@ -16,9 +16,9 @@ from tensorflow.python.ops import state_ops
 from tensorflow.keras.layers import Dense, BatchNormalization, Activation, Dropout
 from spherical_harmonics.kernels import ShGaussianKernelConv
 from spherical_harmonics.kernels import ZernikeGaussianKernelConv, ZernikeGaussianKernels, SphericalHarmonicsGaussianKernels
-from activations import DodecahedronEval, DodecahedronCoeffs
-from group_points import GroupPoints
-from pooling import kd_pooling_2d, kd_pooling_1d, kdtree_indexing, aligned_kdtree_indexing
+from network_utils.activations import DodecahedronEval, DodecahedronCoeffs
+from network_utils.group_points import GroupPoints
+from network_utils.pooling import kd_pooling_2d, kd_pooling_1d, kdtree_indexing, aligned_kdtree_indexing
 from spherical_harmonics.kernels import tf_monomial_basis_3D_idx, tf_spherical_harmonics_basis, tf_eval_monom_basis
 import numpy as np
 from utils.pointclouds_utils import tf_kd_tree_idx

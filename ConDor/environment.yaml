@@ -1,4 +1,4 @@
-name: TFN_capsules
+name: ConDor
 channels:
   - defaults
 dependencies:

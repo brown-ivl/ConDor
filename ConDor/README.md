@@ -9,7 +9,7 @@
    ```
 
 2. ```
-   conda activate TFN_capsules
+   conda activate ConDor
    ```
 
 
