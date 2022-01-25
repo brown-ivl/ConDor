@@ -37,7 +37,7 @@ def step_scheduler(steps, decay_rate, optimizer, epoch):
     
     return optimizer
 
-def orthonormalize_basis(basis):
+def orthonormalize_basis(basis, pos_det = False):
     ''' 
     Orthonormalize the predicted frames
     '''
@@ -45,10 +45,12 @@ def orthonormalize_basis(basis):
     s, u, v = tf.linalg.svd(basis, full_matrices=True)
     orth_basis = tf.matmul(u, v, transpose_b=True)
 
-    # determinant = tf.linalg.det(orth_basis)    
-    # s_new = tf.cond(determinant < tf.constant(0.0), lambda: tf.constant([[1.0, 1.0, -1.0]]), lambda: tf.constant([[1.0, 1.0, 1.0]]))
+    if pos_det == True:
+    
+        determinant = tf.linalg.det(orth_basis)    
+        s_new = tf.cond(determinant < tf.constant(0.0), lambda: tf.constant([[1.0, 1.0, -1.0]]), lambda: tf.constant([[1.0, 1.0, 1.0]]))
 
-    # orth_basis = tf.matmul(u, tf.matmul(tf.linalg.diag(s_new), v, adjoint_b=True))
+        orth_basis = tf.matmul(u, tf.matmul(tf.linalg.diag(s_new), v, adjoint_b=True))
     
     return orth_basis
 
