@@ -1293,3 +1293,9 @@ class SphericalHarmonicsShellsConv(tf.keras.layers.Layer):
         return y
 
 
+if __name__=="__main__":
+
+    x = tf.ones((2, 4, 3), dtype=tf.float32) * tf.expand_dims(tf.expand_dims(tf.range(4, dtype=tf.float32), axis = 0), axis = -1)
+    y = tf_eval_monom_basis(x, 2)
+    print(x)
+    print(y, y.shape)
