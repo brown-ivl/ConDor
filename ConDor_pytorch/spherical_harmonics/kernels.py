@@ -108,6 +108,101 @@ def np_monomial_basis_coeffs(polynomials, monoms_basis):
     return M
 
 
+# class ShGaussianKernelConv(tf.keras.layers.Layer):
+#     def __init__(self, l_max, l_max_out=None, transpose=False, num_source_points=None):
+#         super(ShGaussianKernelConv, self).__init__()
+#         self.l_max = l_max
+#         self.split_size = []
+#         for l in range(l_max + 1):
+#             self.split_size.append(2 * l + 1)
+#         # self.output_type = output_type
+#         self.l_max_out = l_max_out
+#         self.transpose = transpose
+#         self.num_source_points = num_source_points
+#         self.Q = tf_clebsch_gordan_decomposition(l_max=max(l_max_out, l_max),
+#                                                  sparse=False,
+#                                                  output_type='dict',
+#                                                  l_max_out=l_max_out)
+
+#     def build(self, input_shape):
+#         super(ShGaussianKernelConv, self).build(input_shape)
+
+#     def call(self, x):
+#         assert (isinstance(x, dict))
+
+#         signal = []
+#         features_type = []
+#         channels_split_size = []
+#         for l in x:
+#             if l.isnumeric():
+#                 features_type.append(int(l))
+#                 # channels_split_size .append(x[l].shape[-2]*x[l].shape[-1])
+#                 # signal.append(tf.reshape(x[l], (x[l].shape[0], -1)))
+#                 channels_split_size.append(x[l].shape[-2] * x[l].shape[-1])
+#                 signal.append(tf.reshape(x[l], (x[l].shape[0], x[l].shape[1], -1)))
+
+
+#         signal = tf.concat(signal, axis=-1)
+#         batch_size = signal.shape[0]
+#         patch_size = x["kernels"].shape[2]
+#         num_shells = x["kernels"].shape[-1]
+
+#         if self.transpose:
+#             assert(self.num_source_points is not None)
+#             num_points_target = self.num_source_points
+#             kernels = tf.reshape(x["kernels"], (batch_size, x["kernels"].shape[1], patch_size, -1, 1))
+#             signal = tf.reshape(signal, (signal.shape[0], signal.shape[1], 1, 1, -1))
+#             y = tf.multiply(signal, kernels)
+#             y = tf.scatter_nd(indices=x["patches idx"], updates=y,
+#                               shape=(batch_size, num_points_target, kernels.shape[-2], signal.shape[-1]))
+#         else:
+#             if "patches idx" in x:
+#                 signal = tf.gather_nd(signal, x["patches idx"])
+
+#             num_points_target = signal.shape[1]
+#             # signal = tf.expand_dims(signal, axis=1)
+#             kernels = tf.reshape(x["kernels"], (batch_size, num_points_target, patch_size, -1))
+
+#             """
+#             signal_mean = tf.reduce_mean(signal, axis=2, keepdims=True)
+#             signal = tf.subtract(signal, signal_mean)
+#             """
+#             y = tf.einsum('bvpy,bvpc->bvyc', kernels, signal)
+
+
+
+#         # split y
+#         y_ = tf.split(y, num_or_size_splits=channels_split_size, axis=-1)
+#         y = {str(j): [] for j in range(self.l_max_out + 1)}
+#         y_cg = []
+#         for i in range(len(channels_split_size)):
+#             l = features_type[i]
+#             # yi = tf.reshape(y[i], (self._build_input_shape[str(l)][0], -1, self._build_input_shape[str(l)][-1]))
+#             yi = tf.reshape(y_[i], (batch_size, num_points_target, -1, num_shells, 2 * l + 1, x[str(l)].shape[-1]))
+#             yi = tf.transpose(yi, (0, 1, 2, 4, 3, 5))
+#             yi = tf.reshape(yi, (batch_size, num_points_target, -1, 2 * l + 1, num_shells*x[str(l)].shape[-1]))
+#             yi = tf.split(yi, num_or_size_splits=self.split_size, axis=2)
+#             for j in range(len(self.split_size)):
+#                 # yij = tf.transpose(yi[j], (0, 2, 1, 3))
+#                 # yij = tf.reshape(yi[j], (batch_size, num_points_target, 2 * j + 1, 2 * l + 1, -1))
+#                 yij = yi[j]
+#                 if l == 0:
+#                     y[str(j)].append(yij[:, :, :, 0, :])
+#                 elif j == 0:
+#                     y[str(l)].append(yij[:, :, 0, :, :])
+#                 else:
+#                     y_cg.append(yij)
+
+#         y_cg = self.Q.decompose(y_cg)
+
+
+#         for J in y_cg:
+#             if J not in y:
+#                 y[J] = []
+#             y[J].append(y_cg[J])
+#         for J in y:
+#             y[J] = tf.concat(y[J], axis=-1)
+#         return y
 
 
 
@@ -204,7 +299,7 @@ def torch_spherical_harmonics_basis(l_max, concat=False):
         Yl = spherical_harmonics_3D_monomial_basis(l, monoms_basis)
         Y.append(torch.from_numpy(Yl).to(torch.float32))
     if concat:
-        Y = torch.concat(Y, dim=0)
+        Y = torch.cat(Y, dim=0)
     return Y
 
 def np_zernike_kernel(d, n, l):
@@ -224,7 +319,7 @@ def torch_eval_monom_basis(x, d, idx=None):
         idx = torch_monomial_basis_3D_idx(d)
     y = []
     for i in range(3):
-        pows = torch.reshape(torch.range(0, d), (1, 1, d+1)).to(torch.float32)
+        pows = torch.reshape(torch.arange(d+1), (1, 1, d+1)).to(torch.float32)
         yi = torch.pow(x[..., i].unsqueeze(-1), pows.type_as(x))
         y.append(yi[..., idx[..., i]])
     y = torch.stack(y, dim=-1)
@@ -235,73 +330,69 @@ def torch_eval_monom_basis(x, d, idx=None):
 
 
 
-# class SphericalHarmonicsGaussianKernels:
-#     def __init__(self, l_max, gaussian_scale, num_shells, transpose=False, bound=True):
-#         super(SphericalHarmonicsGaussianKernels, self).__init__()
-#         self.l_max = l_max
-#         self.monoms_idx = torch_monomial_basis_3D_idx(l_max)
-#         self.gaussian_scale = gaussian_scale
-#         self.num_shells = num_shells
-#         self.transpose = True
-#         self.Y = torch_spherical_harmonics_basis(l_max, concat=True)
-#         self.split_size = []
-#         self.sh_idx = []
-#         self.bound = bound
-#         for l in range(l_max + 1):
-#             self.split_size.append(2*l+1)
-#             self.sh_idx += [l]*(2*l+1)
-#         self.sh_idx = torch.from_numpy(np.array(self.sh_idx)).to(torch.int32)
-
-#     def build(self, input_shape):
-#         super(SphericalHarmonicsGaussianKernels, self).build(input_shape)
-
-#     def call(self, x):
-#         if "patches dist" in x:
-#             patches_dist = tf.expand_dims(x["patches dist"], axis=-1)
-#         else:
-#             patches_dist = tf.norm(x["patches"], axis=-1, keepdims=True)
-#         normalized_patches = tf.divide(x["patches"], tf.maximum(patches_dist, 0.000001))
-#         if self.transpose:
-#             normalized_patches = -normalized_patches
-#         monoms_patches = torch_eval_monom_basis(normalized_patches, self.l_max, idx=self.monoms_idx)
-#         sh_patches = tf.einsum('ij,bvpj->bvpi', self.Y, monoms_patches)
-#         shells_rad = tf.range(self.num_shells, dtype=tf.float32) / (self.num_shells-1)
-
-#         shells_rad = tf.reshape(shells_rad, (1, 1, 1, -1))
-#         shells = tf.subtract(patches_dist, shells_rad)
-#         shells = tf.exp(-self.gaussian_scale*tf.multiply(shells, shells))
-#         shells_sum = tf.reduce_sum(shells, axis=-1, keepdims=True)
-#         shells = tf.divide(shells, tf.maximum(shells_sum, 0.000001))
+class SphericalHarmonicsGaussianKernels(torch.nn.Module):
+    def __init__(self, l_max, gaussian_scale, num_shells, transpose=False, bound=True):
+        super(SphericalHarmonicsGaussianKernels, self).__init__()
+        self.l_max = l_max
+        self.monoms_idx = torch_monomial_basis_3D_idx(l_max)
+        self.gaussian_scale = gaussian_scale
+        self.num_shells = num_shells
+        self.transpose = True
+        self.Y = torch_spherical_harmonics_basis(l_max, concat=True)
+        self.split_size = []
+        self.sh_idx = []
+        self.bound = bound
+        for l in range(l_max + 1):
+            self.split_size.append(2*l+1)
+            self.sh_idx += [l]*(2*l+1)
+        self.sh_idx = torch.from_numpy(np.array(self.sh_idx)).to(torch.int64)
 
 
 
-#         shells = tf.expand_dims(shells, axis=-2)
-#         if self.bound:
-#             shells = tf.where(tf.expand_dims(patches_dist, axis=-1) <= 1., shells, 0.)
+    def forward(self, x):
+        if "patches dist" in x:
+            patches_dist = x["patches dist"].unsqueeze(-1)
+        else:
+            patches_dist = torch.linalg.norm(x["patches"], dim=-1, keepdims=True)
+        normalized_patches = x["patches"] / torch.maximum(patches_dist, torch.tensor(0.000001).type_as(x["patches"]))
+        if self.transpose:
+            normalized_patches = -normalized_patches
+        # print(normalized_patches.shape)
+        monoms_patches = torch_eval_monom_basis(normalized_patches, self.l_max, idx=self.monoms_idx)
+        # print(self.Y.shape)
+        sh_patches = torch.einsum('ij,bvpj->bvpi', self.Y.type_as(monoms_patches), monoms_patches)
+        shells_rad = torch.arange(self.num_shells).type_as(monoms_patches) / (self.num_shells-1)
+
+        shells_rad = torch.reshape(shells_rad, (1, 1, 1, -1))
+        shells = patches_dist - shells_rad
+        shells = torch.exp(-self.gaussian_scale*(shells * shells))
+        shells_sum = torch.sum(shells, dim=-1, keepdims=True)
+        shells = (shells / torch.maximum(shells_sum, torch.tensor(0.000001).type_as(shells)))
+
+        shells = shells.unsqueeze(-2)
+        if self.bound:
+            shells = torch.where(patches_dist.unsqueeze(-1) <= torch.tensor(1.).type_as(shells), shells, torch.tensor(0.).type_as(shells))
+
+        sh_patches = sh_patches.unsqueeze(-1)
+        sh_patches = shells * sh_patches
 
 
+        # L2 norm
+        l2_norm = torch.sum((sh_patches * sh_patches), dim=2, keepdims=True)
+        l2_norm = torch.split(l2_norm, split_size_or_sections=self.split_size, dim=-2)
+        Y = []
+        for l in range(len(l2_norm)):
+            ml = torch.sum(l2_norm[l], dim=-2, keepdims=True)
+            ml = torch.sqrt(ml + 1e-7)
+            Y.append(ml)
+        l2_norm = torch.cat(Y, dim=-2)
+        l2_norm = torch.mean(l2_norm, dim=1, keepdims=True)
+        l2_norm = torch.maximum(l2_norm, torch.tensor(1e-8).type_as(l2_norm))
+        # print(l2_norm.shape)
+        l2_norm = l2_norm[..., self.sh_idx, :]
+        sh_patches = (sh_patches / (l2_norm + 1e-6))
 
-
-#         sh_patches = tf.expand_dims(sh_patches, axis=-1)
-#         sh_patches = tf.multiply(shells, sh_patches)
-
-
-#         # L2 norm
-#         l2_norm = tf.reduce_sum(tf.multiply(sh_patches, sh_patches), axis=2, keepdims=True)
-#         # l2_norm = tf.reduce_mean(l2_norm, axis=1, keepdims=True)
-#         l2_norm = tf.split(l2_norm, num_or_size_splits=self.split_size, axis=-2)
-#         Y = []
-#         for l in range(len(l2_norm)):
-#             ml = tf.reduce_sum(l2_norm[l], axis=-2, keepdims=True)
-#             ml = tf.sqrt(ml)
-#             Y.append(ml)
-#         l2_norm = tf.concat(Y, axis=-2)
-#         l2_norm = tf.reduce_mean(l2_norm, axis=1, keepdims=True)
-#         l2_norm = tf.maximum(l2_norm, 1e-8)
-#         l2_norm = tf.gather(l2_norm, self.sh_idx, axis=-2)
-#         sh_patches = tf.divide(sh_patches, l2_norm)
-
-#         return sh_patches
+        return sh_patches
 
 
 
@@ -471,26 +562,26 @@ def spherical_harmonics_coeffs(values, z, d):
 
 #     def call(self, x):
 #         if "patches dist" in x:
-#             patches_dist = tf.expand_dims(x["patches dist"], axis=-1)
+#             patches_dist = x["patches dist"].unsqueeze(-1)
 #         else:
-#             patches_dist = tf.norm(x["patches"], axis=-1, keepdims=True)
+#             patches_dist = torch.linalg.norm(x["patches"], dim=-1, keepdims=True)
 
 #         normalized_patches = tf.divide(x["patches"], tf.maximum(patches_dist, 0.000001))
 #         monoms_patches = torch_eval_monom_basis(normalized_patches, self.l_max, idx=self.monoms_idx)
-#         sh_patches = tf.einsum('ij,...j->...i', self.Y, monoms_patches)
-#         shells_rad = tf.range(self.l_max+1, dtype=tf.float32) / self.l_max
+#         sh_patches = torch.einsum('ij,...j->...i', self.Y, monoms_patches)
+#         shells_rad = tf.arange(self.l_max+1).type_as(x) / self.l_max
 
-#         shells_rad = tf.reshape(shells_rad, (1, 1, 1, -1))
-#         shells = tf.subtract(patches_dist, shells_rad)
-#         shells = tf.exp(-self.gaussian_scale*tf.multiply(shells, shells))
-#         shells_sum = tf.reduce_sum(shells, axis=-1, keepdims=True)
-#         shells = tf.divide(shells, tf.maximum(shells_sum, 0.000001))
-#         g = tf.reduce_sum(shells, axis=2, keepdims=True)
+#         shells_rad = torch.reshape(shells_rad, (1, 1, 1, -1))
+#         shells = patches_dist - shells_rad
+#         shells = torch.exp(-self.gaussian_scale* (shells * shells))
+#         shells_sum = torch.sum(shells, dim=-1, keepdims=True)
+#         shells = shells / torch.maximum(shells_sum, torch.tensor(0.000001))
+#         g = torch.sum(shells, dim=2, keepdims=True)
 #         g = tf.reduce_mean(g, axis=[1, -1], keepdims=True)
-#         shells = tf.divide(shells, tf.maximum(g, 0.000001))
-#         sh_patches = tf.expand_dims(sh_patches, axis=-1)
-#         sh_patches = tf.split(sh_patches, num_or_size_splits=self.split_size, axis=-2)
-#         shells = tf.expand_dims(shells, axis=-2)
+#         shells = (shells / torch.maximum(g, torch.tensor(0.000001)))
+#         sh_patches = sh_patches.unsqueeze(-1)
+#         sh_patches = torch.split(sh_patches, num_or_size_splits=self.split_size, dim=-2)
+#         shells = shells.unsqueeze(-1)
 
 
 
@@ -511,7 +602,11 @@ def spherical_harmonics_coeffs(values, z, d):
 
 if __name__=="__main__":
 
-    x = (torch.ones((2, 4, 3)) * torch.range(0, 3).unsqueeze(0).unsqueeze(-1)).cuda()
-    y = torch_eval_monom_basis(x, 2)
+    x = (torch.ones((1, 4, 3)) * torch.arange(4).unsqueeze(0).unsqueeze(-1)).cuda()
+    y = torch_eval_monom_basis(x, 3)
     print(x)
     print(y, y.shape)
+    sph_kernels = SphericalHarmonicsGaussianKernels(l_max = 3, gaussian_scale = 0.1, num_shells = 3).cuda()
+    x = (torch.ones((1, 100, 3, 4)) * torch.arange(4).unsqueeze(0).unsqueeze(1).unsqueeze(2)).cuda()
+    print(x.shape)
+    sph_kernels({"patches": x})
