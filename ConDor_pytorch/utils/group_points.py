@@ -103,15 +103,15 @@ def gather_idx(x, idx):
     # print(idx, _0)
 
     # ############# TENSORFLOW OUTPUTS ZERO IF NEGATIVE INDICES.
-    idx_out = torch.where(idx < idx, idx + num_idx, idx) + idx_base
+    idx_out = torch.where(idx < 0, idx + num_idx, idx) + idx_base
 
-    # print("id:", idx_base)
+    idx_mask = (idx < 0).view(-1)
     idx_out = idx_out.view(-1)
-    # print(idx_out)
-
-    # if len(x.shape) > 2:
-    #     x = x.transpose(2, 1).contiguous()
+    
     out = x.view(batch_size*num_points, -1)[idx_out, :]
+    out[idx_mask, :] = 0
+
+    
     if len(x.shape) == 2:
         out = out.view(batch_size, num_points, -1)
     else:
