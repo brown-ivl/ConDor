@@ -1,8 +1,9 @@
 from sympy import *
 import numpy as np
-import torch
+import torch, h5py
 
-# from spherical_harmonics.clebsch_gordan_decomposition import tf_clebsch_gordan_decomposition
+from utils.group_points import gather_idx, GroupPoints
+from spherical_harmonics.clebsch_gordan_decomposition import torch_clebsch_gordan_decomposition
 # from spherical_harmonics.tf_spherical_harmonics import normalized_real_sh
 
 def associated_legendre_polynomial(l, m, z, r2):
@@ -108,101 +109,84 @@ def np_monomial_basis_coeffs(polynomials, monoms_basis):
     return M
 
 
-# class ShGaussianKernelConv(tf.keras.layers.Layer):
-#     def __init__(self, l_max, l_max_out=None, transpose=False, num_source_points=None):
-#         super(ShGaussianKernelConv, self).__init__()
-#         self.l_max = l_max
-#         self.split_size = []
-#         for l in range(l_max + 1):
-#             self.split_size.append(2 * l + 1)
-#         # self.output_type = output_type
-#         self.l_max_out = l_max_out
-#         self.transpose = transpose
-#         self.num_source_points = num_source_points
-#         self.Q = tf_clebsch_gordan_decomposition(l_max=max(l_max_out, l_max),
-#                                                  sparse=False,
-#                                                  output_type='dict',
-#                                                  l_max_out=l_max_out)
+class ShGaussianKernelConv(torch.nn.Module):
+    def __init__(self, l_max, l_max_out=None, transpose=False, num_source_points=None):
+        super(ShGaussianKernelConv, self).__init__()
+        self.l_max = l_max
+        self.split_size = []
+        for l in range(l_max + 1):
+            self.split_size.append(2 * l + 1)
+        # self.output_type = output_type
+        self.l_max_out = l_max_out
+        # self.transpose = transpose
+        self.num_source_points = num_source_points
+        self.Q = torch_clebsch_gordan_decomposition(l_max=max(l_max_out, l_max),
+                                                 sparse=False,
+                                                 output_type='dict',
+                                                 l_max_out=l_max_out)
 
-#     def build(self, input_shape):
-#         super(ShGaussianKernelConv, self).build(input_shape)
+    def forward(self, x):
+        assert (isinstance(x, dict))
 
-#     def call(self, x):
-#         assert (isinstance(x, dict))
-
-#         signal = []
-#         features_type = []
-#         channels_split_size = []
-#         for l in x:
-#             if l.isnumeric():
-#                 features_type.append(int(l))
-#                 # channels_split_size .append(x[l].shape[-2]*x[l].shape[-1])
-#                 # signal.append(tf.reshape(x[l], (x[l].shape[0], -1)))
-#                 channels_split_size.append(x[l].shape[-2] * x[l].shape[-1])
-#                 signal.append(tf.reshape(x[l], (x[l].shape[0], x[l].shape[1], -1)))
+        signal = []
+        features_type = []
+        channels_split_size = []
+        for l in x:
+            if l.isnumeric():
+                features_type.append(int(l))
+                # channels_split_size .append(x[l].shape[-2]*x[l].shape[-1])
+                # signal.append(tf.reshape(x[l], (x[l].shape[0], -1)))
+                channels_split_size.append(x[l].shape[-2] * x[l].shape[-1])
+                signal.append(torch.reshape(x[l], (x[l].shape[0], x[l].shape[1], -1)))
 
 
-#         signal = tf.concat(signal, axis=-1)
-#         batch_size = signal.shape[0]
-#         patch_size = x["kernels"].shape[2]
-#         num_shells = x["kernels"].shape[-1]
+        signal = torch.cat(signal, dim=-1)
+        batch_size = signal.shape[0]
+        patch_size = x["kernels"].shape[2]
+        num_shells = x["kernels"].shape[-1]
 
-#         if self.transpose:
-#             assert(self.num_source_points is not None)
-#             num_points_target = self.num_source_points
-#             kernels = tf.reshape(x["kernels"], (batch_size, x["kernels"].shape[1], patch_size, -1, 1))
-#             signal = tf.reshape(signal, (signal.shape[0], signal.shape[1], 1, 1, -1))
-#             y = tf.multiply(signal, kernels)
-#             y = tf.scatter_nd(indices=x["patches idx"], updates=y,
-#                               shape=(batch_size, num_points_target, kernels.shape[-2], signal.shape[-1]))
-#         else:
-#             if "patches idx" in x:
-#                 signal = tf.gather_nd(signal, x["patches idx"])
+        
+        if "patches idx" in x:
+            signal = gather_idx(signal, x["patches idx"])
 
-#             num_points_target = signal.shape[1]
-#             # signal = tf.expand_dims(signal, axis=1)
-#             kernels = tf.reshape(x["kernels"], (batch_size, num_points_target, patch_size, -1))
-
-#             """
-#             signal_mean = tf.reduce_mean(signal, axis=2, keepdims=True)
-#             signal = tf.subtract(signal, signal_mean)
-#             """
-#             y = tf.einsum('bvpy,bvpc->bvyc', kernels, signal)
+        num_points_target = signal.shape[1]
+        kernels = torch.reshape(x["kernels"], (batch_size, num_points_target, patch_size, -1))
+        y = torch.einsum('bvpy,bvpc->bvyc', kernels, signal)
 
 
 
-#         # split y
-#         y_ = tf.split(y, num_or_size_splits=channels_split_size, axis=-1)
-#         y = {str(j): [] for j in range(self.l_max_out + 1)}
-#         y_cg = []
-#         for i in range(len(channels_split_size)):
-#             l = features_type[i]
-#             # yi = tf.reshape(y[i], (self._build_input_shape[str(l)][0], -1, self._build_input_shape[str(l)][-1]))
-#             yi = tf.reshape(y_[i], (batch_size, num_points_target, -1, num_shells, 2 * l + 1, x[str(l)].shape[-1]))
-#             yi = tf.transpose(yi, (0, 1, 2, 4, 3, 5))
-#             yi = tf.reshape(yi, (batch_size, num_points_target, -1, 2 * l + 1, num_shells*x[str(l)].shape[-1]))
-#             yi = tf.split(yi, num_or_size_splits=self.split_size, axis=2)
-#             for j in range(len(self.split_size)):
-#                 # yij = tf.transpose(yi[j], (0, 2, 1, 3))
-#                 # yij = tf.reshape(yi[j], (batch_size, num_points_target, 2 * j + 1, 2 * l + 1, -1))
-#                 yij = yi[j]
-#                 if l == 0:
-#                     y[str(j)].append(yij[:, :, :, 0, :])
-#                 elif j == 0:
-#                     y[str(l)].append(yij[:, :, 0, :, :])
-#                 else:
-#                     y_cg.append(yij)
+        # split y
+        y_ = torch.split(y, split_size_or_sections=channels_split_size, dim=-1)
+        y = {str(j): [] for j in range(self.l_max_out + 1)}
+        y_cg = []
+        for i in range(len(channels_split_size)):
+            l = features_type[i]
+            # yi = tf.reshape(y[i], (self._build_input_shape[str(l)][0], -1, self._build_input_shape[str(l)][-1]))
+            yi = torch.reshape(y_[i], (batch_size, num_points_target, -1, num_shells, 2 * l + 1, x[str(l)].shape[-1]))
+            yi = yi.permute(0, 1, 2, 4, 3, 5)
+            yi = torch.reshape(yi, (batch_size, num_points_target, -1, 2 * l + 1, num_shells*x[str(l)].shape[-1]))
+            yi = torch.split(yi, split_size_or_sections=self.split_size, dim=2)
+            for j in range(len(self.split_size)):
+                # yij = tf.transpose(yi[j], (0, 2, 1, 3))
+                # yij = tf.reshape(yi[j], (batch_size, num_points_target, 2 * j + 1, 2 * l + 1, -1))
+                yij = yi[j]
+                if l == 0:
+                    y[str(j)].append(yij[:, :, :, 0, :])
+                elif j == 0:
+                    y[str(l)].append(yij[:, :, 0, :, :])
+                else:
+                    y_cg.append(yij)
 
-#         y_cg = self.Q.decompose(y_cg)
+        y_cg = self.Q.decompose(y_cg)
 
 
-#         for J in y_cg:
-#             if J not in y:
-#                 y[J] = []
-#             y[J].append(y_cg[J])
-#         for J in y:
-#             y[J] = tf.concat(y[J], axis=-1)
-#         return y
+        for J in y_cg:
+            if J not in y:
+                y[J] = []
+            y[J].append(y_cg[J])
+        for J in y:
+            y[J] = tf.concat(y[J], axis=-1)
+        return y
 
 
 
@@ -602,11 +586,21 @@ def spherical_harmonics_coeffs(values, z, d):
 
 if __name__=="__main__":
 
-    x = (torch.ones((1, 4, 3)) * torch.arange(4).unsqueeze(0).unsqueeze(-1)).cuda()
-    y = torch_eval_monom_basis(x, 3)
-    print(x)
-    print(y, y.shape)
+    filename = "/home/rahul/research/data/sapien_processed/train_refrigerator.h5"
+    f = h5py.File(filename, "r")
+    x = torch.from_numpy(f["data"][:2]).cuda()
+    x2 = torch.from_numpy(f["data"][2:4]).cuda()
+
+    # print(x.shape)
+    # x = (torch.ones((1, 4, 3)) * torch.arange(4).unsqueeze(0).unsqueeze(-1)).cuda()
+    # y = torch_eval_monom_basis(x, 3)
+    # print(x)
+    # print(y, y.shape)
+    gi = GroupPoints(0.2, 32)
+    out = gi({"source points": x, "target points": x2})
+    
     sph_kernels = SphericalHarmonicsGaussianKernels(l_max = 3, gaussian_scale = 0.1, num_shells = 3).cuda()
-    x = (torch.ones((1, 100, 3, 4)) * torch.arange(4).unsqueeze(0).unsqueeze(1).unsqueeze(2)).cuda()
-    print(x.shape)
-    sph_kernels({"patches": x})
+    # x = (torch.ones((1, 100, 32, 3)) * torch.arange(3).unsqueeze(0).unsqueeze(1).unsqueeze(2)).cuda()
+    # print(x.shape)
+    patches = sph_kernels({"patches": out["patches source"], "patches dist": out["patches dist source"]})
+    print(patches, patches.shape)

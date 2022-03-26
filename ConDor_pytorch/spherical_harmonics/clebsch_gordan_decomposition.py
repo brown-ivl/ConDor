@@ -1,5 +1,5 @@
 import numpy as np
-import tensorflow as tf
+import torch
 from spherical_harmonics.wigner_matrix import complex_wigner_, complex_D_wigner, real_D_wigner, euler_rot_zyz
 from spherical_harmonics.wigner_matrix import complex_to_real_sh, real_to_complex_sh
 
@@ -141,7 +141,7 @@ def np_clebsch_gordan_decomposition(j1, j2, matrix_shape=True, l_max=None, dtype
     Q = np.concatenate(Q, axis=0)
     return Q
 
-def tf_clebsch_gordan_decomposition_(j1, j2, sparse=False, l_max=None, dtype=torch.float32):
+def torch_clebsch_gordan_decomposition_(j1, j2, sparse=False, l_max=None, dtype=torch.float32):
     Q = np_clebsch_gordan_decomposition(j1, j2, matrix_shape=True, l_max=l_max, dtype=np.float32)
     if sparse:
         coeffs, idx = sparse_matrix(Q)
@@ -194,7 +194,7 @@ def sparse_decompose_(x, coeffs, idx):
     return y
 
 
-class tf_clebsch_gordan_decomposition:
+class torch_clebsch_gordan_decomposition:
     def __init__(self, l_max, l_max_out=None, sparse=False, output_type='dict'):
         self.dtype = tf.float32
         self.l_max = l_max
