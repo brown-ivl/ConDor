@@ -85,6 +85,40 @@ def patches_radius(radius, sq_norm):
         rad = torch.reshape(rad, (batch_size, 1, 1))
     return rad
 
+
+def gather_idx(x, idx):
+
+
+    """
+    x - B, N, 3
+    idx - B, N, K
+
+    out - B, N, K, 3
+    """
+    num_idx = idx.shape[-1]
+
+    batch_size, num_points = x.shape[:2]
+    idx_base = (torch.arange(x.shape[0]).view(-1, 1, 1))* num_points
+    _0 = torch.zeros_like(idx)
+    # print(idx, _0)
+
+    # ############# TENSORFLOW OUTPUTS ZERO IF NEGATIVE INDICES.
+    idx_out = torch.where(idx < idx, idx + num_idx, idx) + idx_base
+
+    # print("id:", idx_base)
+    idx_out = idx_out.view(-1)
+    # print(idx_out)
+
+    # if len(x.shape) > 2:
+    #     x = x.transpose(2, 1).contiguous()
+    out = x.view(batch_size*num_points, -1)[idx_out, :]
+    if len(x.shape) == 2:
+        out = out.view(batch_size, num_points, -1)
+    else:
+        out = out.view(batch_size, num_points, -1, 3)
+
+    return out
+
 def compute_patches_(source, target, sq_distance_mat, num_samples, spacing, radius, source_mask=None):
     batch_size = source.shape[0]
     num_points_source = source.shape[1]
@@ -102,7 +136,7 @@ def compute_patches_(source, target, sq_distance_mat, num_samples, spacing, radi
 
     # mask = sq_patches_dist < radius ** 2
     mask = torch.greater_equal(rad ** 2, sq_patches_dist)
-    patches_idx = (torch.where(mask, patches_idx, torch.tensor(-1).type_as(patches_idx))).to(torch.int32)
+    patches_idx = (torch.where(mask, patches_idx, torch.tensor(-1).type_as(patches_idx))).to(torch.int64)
     if source_mask is not None:
         source_mask = source_mask < 1
         source_mask = source_mask.unsqueeze(-1).repeat(1, 1, patches_idx.shape[-1])
@@ -111,12 +145,14 @@ def compute_patches_(source, target, sq_distance_mat, num_samples, spacing, radi
     batch_idx = torch.arange(batch_size).type_as(patches_idx)
     batch_idx = torch.reshape(batch_idx, (batch_size, 1, 1))
     batch_idx = batch_idx.repeat(1, num_points_target, num_samples)
-    # patches_idx = torch.stack([batch_idx, patches_idx], dim = -1)
+    # patches_idx = torch.stack([batch_idx, patches_idx], dim = -1).to(torch.long)
 
     source = (source / rad)
     target = (target / rad)
     
-    patches = source[batch_idx.to(torch.long), patches_idx.to(torch.long)]
+    # patches = source[batch_idx.to(torch.long), patches_idx.to(torch.long)]
+    patches = gather_idx(source, patches_idx)
+    # patches = source[patches_idx[..., 0], patches_idx[..., 1], :]
     patches = patches - target.unsqueeze(-2)
 
 
@@ -125,11 +161,11 @@ def compute_patches_(source, target, sq_distance_mat, num_samples, spacing, radi
     else:
         mask = torch.ones((batch_size, num_points_source)).type_as(patches)
     
-    patch_size = mask[batch_idx.to(torch.long), patches_idx.to(torch.long)]
-    
+    patch_size = gather_idx(mask, patches_idx.to(torch.long))
     patches_size = torch.sum(patch_size, dim=-1, keepdims=False)
     patches_dist = torch.sqrt(torch.maximum(sq_patches_dist, torch.tensor(0.000000001).type_as(sq_patches_dist)))
     patches_dist = patches_dist / rad
+
     return {"patches": patches, "patches idx": patches_idx, "patches size": patches_size, "patches radius": rad,
             "patches dist": patches_dist}
 
@@ -214,7 +250,13 @@ class GroupPoints(torch.nn.Module):
 
 if __name__ == "__main__":
 
-    x = torch.ones((2, 100, 3)) * torch.arange(100).unsqueeze(-1).unsqueeze(0)
-    y = torch.ones((2, 100, 3)) * torch.arange(5, 105).unsqueeze(-1).unsqueeze(0)
+    N_pts = 10
+    start = 10
+    x = torch.ones((2, N_pts, 3)) * torch.arange(N_pts).unsqueeze(-1).unsqueeze(0)
+    y = torch.ones((2, N_pts, 3)) * torch.arange(start, N_pts + start).unsqueeze(-1).unsqueeze(0)
+    # print(x, y)
     gi = GroupPoints(0.2, 32)
-    gi({"source points": x, "target points": y})
+    out = gi({"source points": x, "target points": y})
+
+    for k in out:
+        print(out[k], out[k].shape, " ", k)
