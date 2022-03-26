@@ -146,10 +146,10 @@ def torch_clebsch_gordan_decomposition_(j1, j2, sparse=False, l_max=None, dtype=
     if sparse:
         coeffs, idx = sparse_matrix(Q)
         idx = torch.from_numpy(idx).to(torch.int64)
-        coeffs = torch.from_numpy(coeffs, dtype=dtype)
+        coeffs = torch.from_numpy(coeffs).to(torch.float32)
         return coeffs, idx
     else:
-        return torch.from_numpy(Q, dtype=dtype)
+        return torch.from_numpy(Q).to(dtype)
 
 def representation_type(x):
     j1 = int((x.shape[-3] - 1) / 2)
@@ -165,7 +165,7 @@ def decompose_(x, Q):
     s[-2] = -1
     s[-1] = c
     x = torch.reshape(x, shape=s)
-    x = torch.einsum('ij,...jk->...ik', Q, x)
+    x = torch.einsum('ij,...jk->...ik', Q.type_as(x), x)
     y = []
     p = 0
     for J in range(abs(j1-j2), j1+j2+1):
@@ -196,7 +196,7 @@ def sparse_decompose_(x, coeffs, idx):
 
 class torch_clebsch_gordan_decomposition:
     def __init__(self, l_max, l_max_out=None, sparse=False, output_type='dict'):
-        self.dtype = tf.float32
+        self.dtype = torch.float32
         self.l_max = l_max
         self.sparse = sparse
         self.output_type = output_type

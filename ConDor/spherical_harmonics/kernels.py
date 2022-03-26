@@ -3,6 +3,8 @@ import numpy as np
 import tensorflow as tf
 from spherical_harmonics.clebsch_gordan_decomposition import tf_clebsch_gordan_decomposition
 from spherical_harmonics.tf_spherical_harmonics import normalized_real_sh
+import h5py
+from network_utils.group_points import GroupPoints
 
 def associated_legendre_polynomial(l, m, z, r2):
     P = 0
@@ -1295,7 +1297,38 @@ class SphericalHarmonicsShellsConv(tf.keras.layers.Layer):
 
 if __name__=="__main__":
 
-    x = tf.ones((2, 4, 3), dtype=tf.float32) * tf.expand_dims(tf.expand_dims(tf.range(4, dtype=tf.float32), axis = 0), axis = -1)
-    y = tf_eval_monom_basis(x, 2)
-    print(x)
-    print(y, y.shape)
+    filename = "/home/rahul/research/data/sapien_processed/train_refrigerator.h5"
+    f = h5py.File(filename, "r")
+    x = tf.cast(f["data"][:2], dtype=tf.float32)
+    x2 = tf.cast(f["data"][2:4], dtype=tf.float32)
+    gi = GroupPoints(0.2, 32)
+    out = gi({"source points": x, "target points": x2})
+    # x = tf.ones((1, 4, 3), dtype=tf.float32) * tf.expand_dims(tf.expand_dims(tf.range(4, dtype=tf.float32), axis = 0), axis = -1)
+    # y = tf_eval_monom_basis(x, 3)
+    # print(x)
+    # print(y, y.shape)
+    sph_kernels = SphericalHarmonicsGaussianKernels(l_max = 3, gaussian_scale = 0.1, num_shells = 3)
+    # x = (tf.ones((1, 100, 32, 3), dtype=tf.float32) * tf.reshape(tf.range(3, dtype=tf.float32), (1, 1, 1, -1)))
+    # print(x.shape)
+    patches = sph_kernels({"patches": out["patches source"], "patches dist": out["patches dist source"]})
+    # print(patches, patches.shape)
+    conv_layer = ShGaussianKernelConv(l_max=3, l_max_out=3)
+    y = {}
+    y["source points"] = x
+    y["target points"] = x2
+    y["patches idx"] = out["patches idx source"]
+    y["patches dist source"] = out["patches dist source"]
+    y["kernels"] = patches
+    # w = gauss_normalization(y["patches dist source"], 1./3.)
+
+
+
+    if '1' in y:
+        y['1'] = torch.cat([y['1'], x2], dim=-1)
+    else:
+        y['1'] = tf.expand_dims(x2, axis=-1)
+
+    y = conv_layer(y)
+    for key in y:
+        print(y[key], " ", key, " ", y[key].shape)
+    

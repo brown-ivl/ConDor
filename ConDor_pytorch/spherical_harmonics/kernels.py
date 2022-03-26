@@ -145,9 +145,11 @@ class ShGaussianKernelConv(torch.nn.Module):
         patch_size = x["kernels"].shape[2]
         num_shells = x["kernels"].shape[-1]
 
-        
+        # Changed and removed transpose here
         if "patches idx" in x:
+            # print(signal.shape, "signal shape", x["patches idx"].shape)
             signal = gather_idx(signal, x["patches idx"])
+            print(signal.shape)
 
         num_points_target = signal.shape[1]
         kernels = torch.reshape(x["kernels"], (batch_size, num_points_target, patch_size, -1))
@@ -156,6 +158,7 @@ class ShGaussianKernelConv(torch.nn.Module):
 
 
         # split y
+        # print(channels_split_size, y.shape)
         y_ = torch.split(y, split_size_or_sections=channels_split_size, dim=-1)
         y = {str(j): [] for j in range(self.l_max_out + 1)}
         y_cg = []
@@ -185,7 +188,7 @@ class ShGaussianKernelConv(torch.nn.Module):
                 y[J] = []
             y[J].append(y_cg[J])
         for J in y:
-            y[J] = tf.concat(y[J], axis=-1)
+            y[J] = torch.cat(y[J], dim=-1)
         return y
 
 
@@ -599,8 +602,30 @@ if __name__=="__main__":
     gi = GroupPoints(0.2, 32)
     out = gi({"source points": x, "target points": x2})
     
-    sph_kernels = SphericalHarmonicsGaussianKernels(l_max = 3, gaussian_scale = 0.1, num_shells = 3).cuda()
+    sph_kernels = SphericalHarmonicsGaussianKernels(l_max = 3, gaussian_scale = 0.1, num_shells = 3, bound = True).cuda()
     # x = (torch.ones((1, 100, 32, 3)) * torch.arange(3).unsqueeze(0).unsqueeze(1).unsqueeze(2)).cuda()
     # print(x.shape)
     patches = sph_kernels({"patches": out["patches source"], "patches dist": out["patches dist source"]})
-    print(patches, patches.shape)
+    conv_layer = ShGaussianKernelConv(l_max=3, l_max_out=3).cuda()
+    y = {}
+    y["source points"] = x
+    y["target points"] = x2
+    y["patches idx"] = out["patches idx source"]
+    y["patches dist source"] = out["patches dist source"]
+    y["kernels"] = patches
+    # w = gauss_normalization(y["patches dist source"], 1./3.)
+
+
+
+    if '1' in y:
+        y['1'] = torch.cat([y['1'], x2], dim=-1)
+    else:
+        y['1'] = x2.unsqueeze(-1)
+
+    y = conv_layer(y)
+    # print(y, y.shape)
+    for key in y:
+        print(y[key], " ", key, " ", y[key].shape)
+    
+    
+    # print(patches, patches.shape)

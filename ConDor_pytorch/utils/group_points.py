@@ -1,70 +1,7 @@
 import torch
 import numpy as np
 
-# import tensorflow as tf
-# import numpy as np
 
-# def tf_unique_with_inverse(x):
-#     y, idx = tf.unique(x)
-#     num_segments = tf.shape(y)[0]
-#     num_elems = tf.shape(x)[0]
-#     return (y, idx,  tf.math.unsorted_segment_min(tf.range(num_elems), idx, num_segments))
-
-# def compute_patches_grid(source, target, num_samples, radius):
-#     batch_size = source.shape[0]
-#     num_points_source = source.shape[1]
-#     num_points_target = target.shape[1]
-#     k = int(np.ceil(pow(num_samples, 1/2.5))) # int(np.ceil(pow(num_samples, 1/3.)))
-#     cell_size = radius / k
-#     source_round = tf.round(source / cell_size)
-#     target_round = tf.round(source / cell_size)
-#     source_grid_idx = tf.cast(source_round, dtype=tf.int32)
-#     target_grid_idx = tf.cast(target_round, dtype=tf.int32)
-#     min_grid_idx = tf.minimum(tf.reduce_min(source_grid_idx), tf.reduce_min(target_grid_idx))
-#     max_grid_idx = tf.maximum(tf.reduce_max(source_grid_idx), tf.reduce_max(target_grid_idx))
-#     source_grid_idx = source_grid_idx - min_grid_idx + k
-#     target_grid_idx = target_grid_idx - min_grid_idx + k
-#     grid_size = max_grid_idx - min_grid_idx + 2*(k + 1)
-#     source_round = cell_size*source_round
-#     target_round = cell_size*target_round
-#     source_linear_idx = grid_size * (grid_size * source_grid_idx[0] + source_grid_idx[1]) + source_grid_idx[2]
-#     target_linear_idx = grid_size * (grid_size * target_grid_idx[0] + target_grid_idx[1]) + target_grid_idx[2]
-#     batch_idx = tf.expand_dims(tf.multiply(grid_size ** 3, tf.range(batch_size)), axis=-1)
-#     source_linear_idx = tf.add(batch_idx, source_linear_idx)
-#     target_linear_idx = tf.add(batch_idx, target_linear_idx)
-#     target_linear_idx = tf.reshape(target_linear_idx, [-1])
-#     target_ul, target_ul_idx, target_ul_idx_inv = tf_unique_with_inverse(target_linear_idx)
-#     s = tf.range(-k, k+1)
-#     shift = tf.stack(tf.meshgrid(s, s, s), axis=-1)
-#     shift_norm2 = tf.reshape(tf.reduce_sum(tf.multiply(shift, shift), axis=-1, keepdims=False), [-1])
-#     num_cells = tf.reduce_sum(shift_norm2 <= radius*radius)
-#     # _, top_k_idx = tf.math.top_k(-shift_norm2, k=int(0.6*(2*k+1)**3))
-#     _, top_k_idx = tf.math.top_k(-shift_norm2, k=num_cells)
-#     shift_linear_idx = tf.reshape(grid_size * (grid_size * shift[0] + shift[1]) + shift[2], [1, 1, -1])
-#     shift_linear_idx = tf.gather(shift_linear_idx, top_k_idx, axis=-1)
-#     source_linear_idx = tf.tile(tf.reshape(source_linear_idx, [batch_size, num_points_source, 1]), [1, 1, num_cells])
-#     source_linear_idx = tf.add(shift_linear_idx, source_linear_idx)
-#     table = tf.lookup.StaticHashTable(
-#         tf.lookup.KeyValueTensorInitializer(target_ul, target_ul_idx_inv), -1)
-#     patches_idx = table.lookup(source_linear_idx)
-#     patches_idx = tf.reshape(patches_idx, [batch_size, num_points_source, -1])
-#     target = target + tf.reduce_min(target) + 10*radius
-#     patches = tf.gather(tf.reshape(target, [-1, 3]), patches_idx, axis=0)
-#     patches = tf.subtract(patches, tf.expand_dims(target, axis=-2))
-#     patches_norm2 = tf.reduce_sum(tf.multiply(patches, patches), axis=-1, keepdims=False)
-#     neg_patches_norm2, top_k_idx = tf.math.top_k(-patches_norm2, k=num_samples)
-#     batch_idx = tf.range(0, batch_size)
-#     batch_idx = tf.reshape(batch_idx, (batch_size, 1, 1))
-#     batch_idx = tf.tile(batch_idx, (1, num_points_source, num_samples))
-#     point_idx = tf.range(0, num_points_source)
-#     point_idx = tf.tile(point_idx, (batch_size, 1, num_samples))
-#     top_k_idx = tf.stack([batch_idx, point_idx, top_k_idx])
-#     patches_idx = tf.gather_nd(patches_idx, top_k_idx)
-#     cond = tf.less_equal(-radius, neg_patches_norm2)
-#     num_point_patches = tf.cast(tf.reduce_sum(cond, axis=-1, keepdims=False), tf.float32)
-#     patches_idx = tf.where(cond, patches_idx, -1)
-#     patches = tf.gather_nd(patches, top_k_idx)
-#     return patches, patches_idx, num_point_patches
 
 def patches_radius(radius, sq_norm):
     batch_size = sq_norm.shape[0]
@@ -103,8 +40,7 @@ def gather_idx(x, idx):
     # print(idx, _0)
 
     # ############# TENSORFLOW OUTPUTS ZERO IF NEGATIVE INDICES.
-    idx_out = torch.where(idx < 0, idx + num_idx, idx) + idx_base
-
+    idx_out = idx + idx_base.type_as(idx) 
     idx_mask = (idx < 0).view(-1)
     idx_out = idx_out.view(-1)
     
@@ -131,11 +67,11 @@ def compute_patches_(source, target, sq_distance_mat, num_samples, spacing, radi
         sq_patches_dist = sq_patches_dist[:, :, 0::(spacing + 1), ...]
         patches_idx = patches_idx[:, :, 0::(spacing + 1), ...]
 
-    rad = patches_radius(radius, sq_patches_dist)
+    rad = patches_radius(radius, sq_patches_dist).type_as(sq_distance_mat)
     patches_size = patches_idx.shape[-1]
 
     # mask = sq_patches_dist < radius ** 2
-    mask = torch.greater_equal(rad ** 2, sq_patches_dist)
+    mask = torch.greater_equal(rad.type_as(sq_distance_mat) ** 2, sq_patches_dist)
     patches_idx = (torch.where(mask, patches_idx, torch.tensor(-1).type_as(patches_idx))).to(torch.int64)
     if source_mask is not None:
         source_mask = source_mask < 1
@@ -147,8 +83,8 @@ def compute_patches_(source, target, sq_distance_mat, num_samples, spacing, radi
     batch_idx = batch_idx.repeat(1, num_points_target, num_samples)
     # patches_idx = torch.stack([batch_idx, patches_idx], dim = -1).to(torch.long)
 
-    source = (source / rad)
-    target = (target / rad)
+    source = (source / (rad + 1e-6))
+    target = (target / (rad + 1e-6))
     
     # patches = source[batch_idx.to(torch.long), patches_idx.to(torch.long)]
     patches = gather_idx(source, patches_idx)
@@ -164,7 +100,7 @@ def compute_patches_(source, target, sq_distance_mat, num_samples, spacing, radi
     patch_size = gather_idx(mask, patches_idx.to(torch.long))
     patches_size = torch.sum(patch_size, dim=-1, keepdims=False)
     patches_dist = torch.sqrt(torch.maximum(sq_patches_dist, torch.tensor(0.000000001).type_as(sq_patches_dist)))
-    patches_dist = patches_dist / rad
+    patches_dist = patches_dist / (rad + 1e-6)
 
     return {"patches": patches, "patches idx": patches_idx, "patches size": patches_size, "patches radius": rad,
             "patches dist": patches_dist}
