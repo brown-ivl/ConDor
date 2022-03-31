@@ -205,7 +205,7 @@ class SphericalHarmonicsEval:
         for l in self.types:
             X.append(x[l])
         X = torch.cat(X, dim=-2)
-        return torch.einsum('vm,...mc->...vc', self.Y, X)
+        return torch.einsum('vm,...mc->...vc', self.Y.type_as(X), X)
 
 
 class SphericalHarmonicsCoeffs:
@@ -246,7 +246,7 @@ class SphericalHarmonicsCoeffs:
 
     def compute(self, x):
         X = []
-        c = torch.einsum('vm,...vc->...mc', self.Y, x) / (self.Y.shape[0] / (4*np.pi))
+        c = torch.einsum('vm,...vc->...mc', self.Y.type_as(x), x) / (self.Y.shape[0] / (4*np.pi))
         c = torch.split(c, split_size_or_sections=self.split_size, dim=-2)
 
         C = dict()

@@ -148,7 +148,7 @@ class ShGaussianKernelConv(torch.nn.Module):
         if "patches idx" in x:
             # print(signal.shape, "signal shape", x["patches idx"].shape)
             signal = gather_idx(signal, x["patches idx"])
-            print(signal.shape)
+            # print(signal.shape)
 
         num_points_target = signal.shape[1]
         kernels = torch.reshape(x["kernels"], (batch_size, num_points_target, patch_size, -1))
