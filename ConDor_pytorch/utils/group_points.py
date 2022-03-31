@@ -34,26 +34,38 @@ def gather_idx(x, idx):
     """
     num_idx = idx.shape[-1]
 
-    batch_size, num_points = x.shape[:2]
-    idx_base = (torch.arange(x.shape[0]).view(-1, 1, 1))* num_points
-    _0 = torch.zeros_like(idx)
-    # print(idx, _0)
-
-    # ############# TENSORFLOW OUTPUTS ZERO IF NEGATIVE INDICES.
-    idx_out = idx + idx_base.type_as(idx) 
-    idx_mask = (idx < 0).view(-1)
-    idx_out = idx_out.view(-1)
-    
-    out = x.view(batch_size*num_points, -1)[idx_out, :]
-    out[idx_mask, :] = 0
-
-    
     if len(x.shape) == 2:
-        out = out.view(batch_size, num_points, -1)
+        out = x[idx[..., 0], idx[..., 1]]
+        out[idx[..., 1] < 0] = 0
+    
     else:
-        out = out.view(batch_size, num_points, -1, 3)
+        out = x[idx[..., 0], idx[..., 1], :]
+        out[idx[..., 1] < 0, :] = 0
+
+    # print(idx[..., 1].shape, out.shape)
 
     return out
+    # batch_size, num_points = x.shape[:2]
+    # num_points = idx.shape[..., 0].shape[-1]
+    # idx_base = (torch.arange(x.shape[0]).view(-1, 1, 1))* num_points
+    # _0 = torch.zeros_like(idx)
+    # # print(idx, _0)
+
+    # # ############# TENSORFLOW OUTPUTS ZERO IF NEGATIVE INDICES.
+    # idx_out = idx + idx_base.type_as(idx) 
+    # idx_mask = (idx < 0).view(-1)
+    # idx_out = idx_out.view(-1)
+    
+    # out = x.view(batch_size*num_points, -1)[idx_out, :]
+    # out[idx_mask, :] = 0
+
+    
+    # if len(x.shape) == 2:
+    #     out = out.view(batch_size, num_points, -1)
+    # else:
+    #     out = out.view(batch_size, num_points, -1, 3)
+
+    # return out
 
 def compute_patches_(source, target, sq_distance_mat, num_samples, spacing, radius, source_mask=None):
     batch_size = source.shape[0]
@@ -81,7 +93,7 @@ def compute_patches_(source, target, sq_distance_mat, num_samples, spacing, radi
     batch_idx = torch.arange(batch_size).type_as(patches_idx)
     batch_idx = torch.reshape(batch_idx, (batch_size, 1, 1))
     batch_idx = batch_idx.repeat(1, num_points_target, num_samples)
-    # patches_idx = torch.stack([batch_idx, patches_idx], dim = -1).to(torch.long)
+    patches_idx = torch.stack([batch_idx, patches_idx], dim = -1).to(torch.long)
 
     source = (source / (rad + 1e-6))
     target = (target / (rad + 1e-6))
@@ -89,6 +101,7 @@ def compute_patches_(source, target, sq_distance_mat, num_samples, spacing, radi
     # patches = source[batch_idx.to(torch.long), patches_idx.to(torch.long)]
     patches = gather_idx(source, patches_idx)
     # patches = source[patches_idx[..., 0], patches_idx[..., 1], :]
+    # print(patches.shape, "patch")
     patches = patches - target.unsqueeze(-2)
 
 
@@ -98,6 +111,7 @@ def compute_patches_(source, target, sq_distance_mat, num_samples, spacing, radi
         mask = torch.ones((batch_size, num_points_source)).type_as(patches)
     
     patch_size = gather_idx(mask, patches_idx.to(torch.long))
+    # patch_size = mask[patches_idx[..., 0], patches_idx[..., 1]]
     patches_size = torch.sum(patch_size, dim=-1, keepdims=False)
     patches_dist = torch.sqrt(torch.maximum(sq_patches_dist, torch.tensor(0.000000001).type_as(sq_patches_dist)))
     patches_dist = patches_dist / (rad + 1e-6)
