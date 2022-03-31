@@ -4,7 +4,6 @@ import torch, h5py
 
 from utils.group_points import gather_idx, GroupPoints
 from spherical_harmonics.clebsch_gordan_decomposition import torch_clebsch_gordan_decomposition
-# from spherical_harmonics.tf_spherical_harmonics import normalized_real_sh
 
 def associated_legendre_polynomial(l, m, z, r2):
     P = 0
@@ -32,7 +31,7 @@ def B(m, x, y):
 computes the unnormalized real spherical harmonic Y_{lm} as a polynomial
 of the euclidean coordinates x, y, z
 """
-def real_spherical_harmonic(l, m, x, y, z):
+def real_spherical_harmonic(l, m, x, y, z, poly = False):
     K = np.sqrt((2*l+1)/(2*np.pi))
     r2 = x**2 + y**2 + z**2
     if m > 0:
@@ -42,6 +41,8 @@ def real_spherical_harmonic(l, m, x, y, z):
     else:
         K = np.sqrt((2 * l + 1) / (4 * np.pi))
         Ylm = K * associated_legendre_polynomial(l, 0, z, r2)
+    if poly:
+        Ylm = Poly(simplify(expand(Ylm)), x, y, z)
     return Ylm
 
 def binom(n, k):
@@ -134,8 +135,6 @@ class ShGaussianKernelConv(torch.nn.Module):
         for l in x:
             if l.isnumeric():
                 features_type.append(int(l))
-                # channels_split_size .append(x[l].shape[-2]*x[l].shape[-1])
-                # signal.append(tf.reshape(x[l], (x[l].shape[0], -1)))
                 channels_split_size.append(x[l].shape[-2] * x[l].shape[-1])
                 signal.append(torch.reshape(x[l], (x[l].shape[0], x[l].shape[1], -1)))
 
@@ -164,14 +163,12 @@ class ShGaussianKernelConv(torch.nn.Module):
         y_cg = []
         for i in range(len(channels_split_size)):
             l = features_type[i]
-            # yi = tf.reshape(y[i], (self._build_input_shape[str(l)][0], -1, self._build_input_shape[str(l)][-1]))
             yi = torch.reshape(y_[i], (batch_size, num_points_target, -1, num_shells, 2 * l + 1, x[str(l)].shape[-1]))
             yi = yi.permute(0, 1, 2, 4, 3, 5)
             yi = torch.reshape(yi, (batch_size, num_points_target, -1, 2 * l + 1, num_shells*x[str(l)].shape[-1]))
             yi = torch.split(yi, split_size_or_sections=self.split_size, dim=2)
             for j in range(len(self.split_size)):
-                # yij = tf.transpose(yi[j], (0, 2, 1, 3))
-                # yij = tf.reshape(yi[j], (batch_size, num_points_target, 2 * j + 1, 2 * l + 1, -1))
+
                 yij = yi[j]
                 if l == 0:
                     y[str(j)].append(yij[:, :, :, 0, :])
@@ -264,16 +261,7 @@ def np_zernike_kernel_basis(d):
         Z.append(np.stack(Zl, axis=0))
     return Z
 
-# def tf_zernike_kernel_basis(d, stack_axis=1):
-#     monoms_basis = monomial_basis_3D(d)
-#     Z = []
-#     for l in range(d+1):
-#         Zl = []
-#         for n in range(l, d+1):
-#             if (n - l) % 2 == 0 and d >= n:
-#                 Zl.append(zernike_kernel_3D_monomial_basis(n, l, monoms_basis))
-#         Z.append(tf.convert_to_tensor(np.stack(Zl, axis=stack_axis), dtype=tf.float32))
-#     return Z
+
 
 
 """
@@ -383,207 +371,6 @@ class SphericalHarmonicsGaussianKernels(torch.nn.Module):
 
 
 
-# def zernike_multiplicity(d):
-#     m = [0]*(d+1)
-#     for n in range(d + 1):
-#         for l in range(n + 1):
-#             if (n - l) % 2 == 0:
-#                 m[l] += 1
-#     return m
-
-# def zernike_split_size(d):
-#     m = zernike_multiplicity(d)
-#     s = []
-#     for l in range(len(m)):
-#         s.append((2*l+1)*m[l])
-#     return s
-
-# def spherical_harmonics_to_zernike_format(x, split=True):
-#     l_max = 0
-#     for l in x:
-#         if l.isnumeric():
-#             l_max = max(l_max, int(l))
-#     m = zernike_multiplicity(l_max)
-#     stack = not split
-#     if stack:
-#         y = []
-#     else:
-#         y = dict()
-#     for l in x:
-#         if l.isnumeric():
-#             sl = list(x[l].shape)
-#             assert (x[l].shape[-1] % m[int(l)] == 0)
-#             if stack:
-#                 sl[-1] = int(sl[-1] / m[int(l)])
-#                 sl[-2] = int(sl[-2] * m[int(l)])
-#                 y.append(tf.reshape(x[l], sl))
-#             else:
-#                 sl = sl[:-1]
-#                 yl = tf.reshape(x[l], sl + [m[int(l)], -1])
-#                 y[l] = yl
-#     if stack:
-#         y = tf.concat(y, axis=-2)
-#     return y
-
-# def split_spherical_harmonics_coeffs(x):
-#     l_max = int(np.sqrt(x.shape[-2]) - 0.99)
-#     split_size = []
-#     for l in range(l_max + 1):
-#         split_size.append(2*l+1)
-#     return tf.split(x, num_or_size_splits=split_size, axis=-2)
-
-# def split_zernike_coeffs(x, d):
-#     s = zernike_split_size(d)
-#     return tf.split(x, num_or_size_splits=s, axis=-2)
-
-# def spherical_harmonics_format(x):
-#     y = dict()
-#     m = zernike_multiplicity(len(x)-1)
-
-
-#     for l in range(len(x)):
-#         sl = list(x[l].shape)
-
-#         sl[-2] = int(sl[-2] / m[l])
-#         sl[-1] = -1
-
-#         y[str(l)] = tf.reshape(x[l], sl)
-#     return y
-
-# def zernike_eval(coeffs, z):
-#     """
-#     evaluate zernike functions given their coeffs
-#     z = Zernike(x) where x are the evaluation points
-#     coeffs are given in a splited spherical harmonics format
-#     """
-#     # convert coeffs to Zernike format
-#     z_coeffs = spherical_harmonics_to_zernike_format(coeffs, split=False)
-#     return tf.einsum('bpz,bvzc->bvpc', z, z_coeffs)
-
-
-def spherical_harmonics_coeffs(values, z, d):
-    z_coeffs = tf.einsum('bpz,bvpc->bvzc', z, values)
-    z_coeffs = z_coeffs / float(z.shape[1])
-    z_coeffs = split_zernike_coeffs(z_coeffs, d)
-    y = spherical_harmonics_format(z_coeffs)
-    return y
-
-# class ZernikePolynomials(tf.keras.layers.Layer):
-#     def __init__(self, d, split=True, gaussian_scale=None):
-#         super(ZernikePolynomials, self).__init__()
-#         self.d = d
-#         self.split = split
-#         self.gaussian_scale = gaussian_scale
-#         # self.add_channel_axis = add_channel_axis
-#         self.monoms_idx = torch_monomial_basis_3D_idx(d)
-#         Z = tf_zernike_kernel_basis(d)
-#         self.split_size = []
-#         self.Z = []
-#         k = 0
-#         for l in range(len(Z)):
-#             self.split_size.append(Z[l].shape[0] * Z[l].shape[1])
-#             self.Z.append(tf.reshape(Z[l], (-1, Z[l].shape[-1])))
-#         self.Z = tf.concat(self.Z, axis=0)
-#     def build(self, input_shape):
-#         super(ZernikePolynomials, self).build(input_shape)
-
-#     def call(self, x):
-#         monoms = torch_eval_monom_basis(x, self.d, idx=self.monoms_idx)
-#         z = tf.einsum('ij,...j->...i', self.Z, monoms)
-
-#         if self.gaussian_scale is not None:
-#             # c = tf.reduce_mean(x, axis=-2, keepdims=True)
-#             # x = tf.subtract(x, c)
-#             n2 = tf.multiply(x, x)
-#             n2 = tf.reduce_sum(n2, axis=-1, keepdims=True)
-#             g = tf.exp(-self.gaussian_scale*n2)
-#             z = tf.multiply(g, z)
-
-
-#         #  if self.add_channel_axis:
-#             # z = tf.expand_dims(z, axis=-1)
-#         if self.split:
-#             z = tf.split(z, num_or_size_splits=self.split_size, axis=-1)
-#         return z
-
-# class SphericalHarmonics(tf.keras.layers.Layer):
-#     def __init__(self, l_max, split=True, add_channel_axis=True):
-#         super(SphericalHarmonics, self).__init__()
-#         self.l_max = l_max
-#         self.split = split
-#         self.add_channel_axis = add_channel_axis
-#         self.monoms_idx = torch_monomial_basis_3D_idx(l_max)
-#         self.Y = torch_spherical_harmonics_basis(l_max=l_max, concat=True)
-#         self.split_size = []
-#         for l in range(l_max+1):
-#             self.split_size.append(2*l+1)
-#     def build(self, input_shape):
-#         super(SphericalHarmonics, self).build(input_shape)
-
-#     def call(self, x):
-#         x = tf.math.l2_normalize(x, axis=-1)
-#         monoms = torch_eval_monom_basis(x, self.l_max, idx=self.monoms_idx)
-#         y = tf.einsum('ij,...j->...i', self.Y, monoms)
-#         if self.add_channel_axis:
-#             y = tf.expand_dims(z, axis=-1)
-#         if self.split:
-#             y = tf.split(y, num_or_size_splits=self.split_size, axis=-1)
-#         return y
-
-# class SphericalHarmonicsShellsKernels(tf.keras.layers.Layer):
-#     def __init__(self, l_max, stack=True):
-#         super(SphericalHarmonicsShellsKernels, self).__init__()
-#         self.l_max = l_max
-#         self.stack = stack
-#         self.monoms_idx = torch_monomial_basis_3D_idx(l_max)
-#         self.gaussian_scale = 4*0.69314718056*(l_max**2)
-#         self.Y = torch_spherical_harmonics_basis(l_max, concat=True)
-#         self.split_size = []
-#         self.sh_idx = []
-#         for l in range(l_max + 1):
-#             self.split_size.append(2*l+1)
-
-
-#     def build(self, input_shape):
-#         super(SphericalHarmonicsShellsKernels, self).build(input_shape)
-
-#     def call(self, x):
-#         if "patches dist" in x:
-#             patches_dist = x["patches dist"].unsqueeze(-1)
-#         else:
-#             patches_dist = torch.linalg.norm(x["patches"], dim=-1, keepdims=True)
-
-#         normalized_patches = tf.divide(x["patches"], tf.maximum(patches_dist, 0.000001))
-#         monoms_patches = torch_eval_monom_basis(normalized_patches, self.l_max, idx=self.monoms_idx)
-#         sh_patches = torch.einsum('ij,...j->...i', self.Y, monoms_patches)
-#         shells_rad = tf.arange(self.l_max+1).type_as(x) / self.l_max
-
-#         shells_rad = torch.reshape(shells_rad, (1, 1, 1, -1))
-#         shells = patches_dist - shells_rad
-#         shells = torch.exp(-self.gaussian_scale* (shells * shells))
-#         shells_sum = torch.sum(shells, dim=-1, keepdims=True)
-#         shells = shells / torch.maximum(shells_sum, torch.tensor(0.000001))
-#         g = torch.sum(shells, dim=2, keepdims=True)
-#         g = tf.reduce_mean(g, axis=[1, -1], keepdims=True)
-#         shells = (shells / torch.maximum(g, torch.tensor(0.000001)))
-#         sh_patches = sh_patches.unsqueeze(-1)
-#         sh_patches = torch.split(sh_patches, num_or_size_splits=self.split_size, dim=-2)
-#         shells = shells.unsqueeze(-1)
-
-
-
-#         sh_shells_patches = []
-#         for l in range(len(sh_patches)):
-#             sh_shells_patches.append(tf.multiply(shells[..., l:], sh_patches[l]))
-
-#         if self.stack:
-#             for l in range(len(sh_shells_patches)):
-#                 sl = list(sh_shells_patches[l].shape)
-#                 sl = sl[:-1]
-#                 sl[-1] = -1
-#                 sh_shells_patches[l] = tf.reshape(sh_shells_patches[l], sl)
-#             sh_shells_patches = tf.concat(sh_shells_patches, axis=-1)
-#         return sh_shells_patches
 
 
 
