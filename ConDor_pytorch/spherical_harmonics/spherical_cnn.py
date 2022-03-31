@@ -269,6 +269,12 @@ if __name__=="__main__":
     for i in range(4):
         y[str(i)] = (torch.ones((2, 16, 2*i + 1, 128)) * torch.arange(16).unsqueeze(0).unsqueeze(-1).unsqueeze(-1)).to(device)
 
+    x = y.copy()
+    # Inverse Spherical Harmonics Transform
     y = SphericalHarmonicsEval(l_max=3, base=S2).compute(y)
     print(y, y.shape)
+    # Spherical Harmonics Transform
+    y = SphericalHarmonicsCoeffs(l_max=3, base=S2).compute(y)
+    for key in y:
+        print(y[key], y[key].shape)
     pass
