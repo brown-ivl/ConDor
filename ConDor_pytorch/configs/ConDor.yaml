@@ -33,7 +33,7 @@ loss:
   inv_partiality_loss: 1.0
   chamfer_loss: 1.0
   hausdorff_loss: 0.0
-  separation_loss_basis: 0.8
+  separation_loss_basis: 0.3
   caps_scaled_loss: 0.0
   caps_scaled_l2_loss: 0.0
   scale_loss: 0.0
@@ -87,8 +87,8 @@ callback:
     segmentation:
       # type: pl.callbacks.ModelCheckpoint
       args:
-        filename: "model-{epoch}-{val_loss:.4f}-ConDor"
-        monitor: "val_loss"
+        filename: "model-{epoch}-{val_l2_loss:.4f}-ConDor"
+        monitor: "val_l2_loss"
         mode: "min"
         verbose: True
         dirpath: "./checkpoints"

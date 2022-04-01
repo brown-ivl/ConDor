@@ -82,7 +82,7 @@ class ConDor_trainer(pl.LightningModule):
         orth_basis_frames = orth_basis
         # print(orth_basis.shape)
         # print(indices.shape)
-        orth_basis = orth_basis[torch.arange(12), indices[:, 0]]
+        orth_basis = orth_basis[torch.arange(indices.shape[0]), indices[:, 0]]
         # print(orth_basis.shape)
 
         y_p = torch.einsum("bij, bpj->bpi", orth_basis, inv)
