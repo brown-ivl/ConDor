@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch
+from spherical_harmonics.spherical_cnn import SphericalHarmonicsCoeffs
 
 
 def apply_layers(x, layers):
@@ -10,7 +11,25 @@ def apply_layers(x, layers):
         if l.isnumeric():
             y[l] = layers[int(l)](x[l])
     return y
-    
+
+def type_0(x, S2):
+    """
+    Spherical Harmonics Transform to extract type 0 features
+    """
+
+    y = SphericalHarmonicsCoeffs(l_list=[0], base=S2).compute(x)
+    return y['0']
+
+
+
+def type_1(x, S2):
+    """
+    Spherical Harmonics Transform to extract type 1 features that are equivariant to SO(3)
+    """
+    y = SphericalHarmonicsCoeffs(l_list=[1], base=S2).compute(x)
+    return y['1']
+
+
 def set_sphere_weights(in_channel, out_channel, types):
     weights = []
     for l in types:
@@ -26,14 +45,15 @@ class MLP(nn.Module):
         super(MLP, self).__init__()
         
         self.mlp = nn.Linear(in_channels, out_channels)
-        self.batchnorm = nn.BatchNorm1d(out_channels, momentum=bn_momentum)
-        self.apply_norm = apply_norm
+        if apply_norm:
+            self.batchnorm = nn.BatchNorm1d(out_channels, momentum=bn_momentum)
         self.activation = activation
+        self.apply_norm = apply_norm
         
     def forward(self, x):
         out = self.mlp(x)        
         if self.activation is not None:
-            out = nn.LeakyReLU(True)(out)
+            out = self.activation(out)
         if self.apply_norm:
             out = self.batchnorm(out.transpose(1, -1)).transpose(1, -1)
 

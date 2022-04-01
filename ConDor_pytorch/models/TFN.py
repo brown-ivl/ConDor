@@ -6,19 +6,21 @@ from models.layers import MLP, MLP_layer, set_sphere_weights, apply_layers
 from utils.pooling import kd_pooling_1d
 
 class TFN(torch.nn.Module):
-    def __init__(self):
+    """
+    TFN layer for prediction in Pytorch
+    """
+    def __init__(self, sphere_samples = 64, bn_momentum = 0.75, mlp_units = [[32, 32], [64, 64], [128, 256]], l_max = [3, 3, 3], l_max_out = [3, 3, 3], num_shells = [3, 3, 3]):
         super(TFN, self).__init__()
-        self.l_max = [3, 3, 3]
-        self.l_max_out = [3, 3, 3]
-        self.num_shells = [3, 3, 3]
+        self.l_max = l_max
+        self.l_max_out = l_max_out
+        self.num_shells = num_shells
         self.gaussian_scale = []
         for i in range(len(self.num_shells)):
             self.gaussian_scale.append(0.69314718056 * ((self.num_shells[i]) ** 2))
         self.radius = [0.2, 0.40, 0.8]
         self.bounded = [True, True, True]
 
-        self.S2 = torch_fibonnacci_sphere_sampling(64)
-        self.basis_dim = 3
+        self.S2 = torch_fibonnacci_sphere_sampling(sphere_samples)
 
         self.num_points = [1024, 256, 64, 16]
         self.patch_size = [32, 32, 32]
@@ -27,10 +29,9 @@ class TFN(torch.nn.Module):
         self.equivariant_units = [32, 64, 128]
         self.in_equivariant_channels = [[6, 13, 12, 9], [387, 874, 1065, 966], [771, 1738, 2121, 1926]]
 
-        self.mlp_units = [[32, 32], [64, 64], [128, 256]]
+        self.mlp_units = mlp_units
         self.in_mlp_units = [32, 64, 128]
-        self.bn_momentum = 0.75
-        self.droupout_rate = 0.5
+        self.bn_momentum = bn_momentum
 
         self.grouping_layers = []
         self.kernel_layers = []
@@ -154,8 +155,9 @@ class TFN(torch.nn.Module):
                 y = SphericalHarmonicsCoeffs(l_max=self.l_max_out[i], base=self.S2).compute(y)
 
         
-        print(y.shape)
-        F = torch.max(y, dim=1, keepdims=False).values
+        # print(y.shape) # B, 16, 64, 256
+        # 64 sphere samples
+        F = torch.max(y, dim=1, keepdims=False).values # B, samples, feature_dim
 
         return F
 
