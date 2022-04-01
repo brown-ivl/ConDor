@@ -69,7 +69,7 @@ class ConDor(torch.nn.Module):
             basis = self.basis_mlp[frame_num](F)
             basis = self.basis_layer[frame_num](basis)
             basis = type_1(basis, self.S2)
-            basis = torch.linalg.norm(basis, dim=-1, ord = 2)
+            basis = torch.nn.functional.normalize(basis, dim=-1, p = 2, eps = 1e-6)
             E.append(basis)
 
         # Predicting amodal translation
@@ -114,5 +114,11 @@ class ConDor(torch.nn.Module):
 if __name__=="__main__":
 
     x = torch.randn((16, 1024, 3)).cuda()
-    model = ConDor(num_capsules = 10, num_frames = 1).cuda()
+    model = ConDor(num_capsules = 10, num_frames = 5).cuda()
     out = model(x)
+
+    for key in out:
+        if type(out[key]) != list:
+            print(key, " ", out[key].shape)
+        else:
+            print(key, " list length: ", len(out[key]), " dim: ", out[key][0].shape)
