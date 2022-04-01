@@ -96,16 +96,10 @@ callback:
 
 test:
   weights: 
-  max_iter: 200
-  pose_directory: 
-  save_directory: "./renderings/"
-  intrinsics_path: 
+  max_iter: 
+  save_directory: "./pointclouds"
   skip: 10
-  render:
-    height: 480
-    width: 640
-    chunk: 200000
-
+  
 logging:
   type: "WandbLogger"
   project: "ConDor"

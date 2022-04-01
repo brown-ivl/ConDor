@@ -8,7 +8,7 @@ import numpy as np
 import pytorch_lightning as pl
 from torch.utils.data import Dataset, DataLoader
 import hydra
-from utils.pointcloud_utils import kdtree_indexing
+from utils.pointcloud_utils import kdtree_indexing, save_pointcloud, convert_yzx_to_xyz_basis
 from scipy.spatial.transform import Rotation
 from pytorch3d.loss import chamfer_distance
 
@@ -58,6 +58,7 @@ class ConDor_trainer(pl.LightningModule):
         loss_dictionary = self.compute_loss(batch, x, out_dict)
 
         if return_outputs:
+            out_dict["x_input"] = x
             return loss_dictionary, out_dict
         else:
             return loss_dictionary
@@ -87,6 +88,10 @@ class ConDor_trainer(pl.LightningModule):
 
         y_p = torch.einsum("bij, bpj->bpi", orth_basis, inv)
         y_p = torch.stack([y_p[..., 2], y_p[..., 0], y_p[..., 1]], dim = -1)
+        outputs["y_p"] = y_p
+        basis_instance_to_canonical = torch.pinverse(convert_yzx_to_xyz_basis(orth_basis))
+        canonical_x = torch.einsum('bij,bkj->bki', basis_instance_to_canonical, x)
+        outputs["x_canonical"] = canonical_x
 
         # Losses
         separation_loss_basis = -torch.mean(torch.abs(basis[:, None] - basis[:, :, None]))
@@ -150,11 +155,53 @@ class ConDor_trainer(pl.LightningModule):
                 self.log(key, loss_dictionary[key], **self.hparam_config.logging.args)
 
 
-    def render_inference(self, x):
+    def test_step(self, x):
         '''
-        pose - B, 4, 4
-        intrinsics - 3, 3
+        Input:
+            x - B, N, 3
+        Output:
+            output_dictionary - dictionary with all outputs and inputs
         '''
-        output_dictionary = {}
+        output_dictionary = self.forward_pass(x)
 
         return output_dictionary
+
+
+    def save_outputs(self, save_file_name, out_dict):
+        """
+        Save outputs to file
+        """
+        save_keys = ["x_input", "points_inv", "y_p", "x_canonical"]
+        for key in out_dict:
+            print(key)
+            if key in save_keys:
+                pcd_name = save_file_name + "_" + key + ".ply"
+                save_pointcloud(out_dict[key], pcd_name)
+
+
+    def run_test(self, dataset_num = 1, save_directory = "./pointclouds", max_iters = None, skip = 20):
+        '''
+        Run test pass on the dataset
+        '''
+
+        self.hparam_config.dataset.loader.args.batch_size = 1
+        loader = self.val_dataloader()
+
+        if max_iters is not None:
+            max_iters = min(max_iters, len(loader))
+        else:
+            max_iters = len(loader)
+        
+        if not os.path.exists(save_directory):
+            os.makedirs(save_directory)
+
+        with torch.no_grad():
+            for i, batch in enumerate(loader):
+                if i % skip == 0:
+                    print(i)
+                    batch["pc"] = batch["pc"].cuda()
+                    x = batch   
+                    out, pcd_output = self.forward_pass(x, 0, return_outputs = True)
+                    
+                    save_file_name = os.path.join(save_directory, "") + "%d" % i
+                    self.save_outputs(save_file_name, pcd_output)

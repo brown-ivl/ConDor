@@ -2,6 +2,81 @@ import torch
 from utils.group_points import gather_idx
 import numpy as np
 import h5py
+import open3d as o3d
+import seaborn as sns
+
+def convert_yzx_to_xyz_basis(basis):
+
+    # basis - N, 3, 3
+
+    rot_y = torch.tensor([[np.cos(np.pi / 2), 0, np.sin(np.pi / 2)]
+              ,[0,              1,                      0], 
+              [-np.sin(np.pi / 2), 0, np.cos(np.pi / 2)]]).type_as(basis)
+
+
+    rot_z = torch.tensor([
+                    [np.cos(np.pi / 2), -np.sin(np.pi / 2), 0],
+                    [np.sin(np.pi / 2), np.cos(np.pi / 2), 0],
+                    [0, 0, 1]
+                    ]).type_as(basis)
+
+    transform = (rot_y @ rot_z).unsqueeze(0).type_as(basis)
+    transform = transform.repeat(basis.shape[0], 1, 1)
+
+    return transform @ basis
+
+def create_color_samples(N):
+    '''
+    Creates N distinct colors
+    N x 3 output
+    '''
+
+    palette = sns.color_palette(None, N)
+    palette = np.array(palette)
+
+    return palette
+
+def convert_tensor_2_numpy(x):
+    '''
+    Convert pytorch tensor to numpy
+    '''
+    
+    out = x.squeeze(0).detach().cpu().numpy()
+    
+    return out 
+
+def save_pointcloud(x, filename = "./pointcloud.ply"):
+    '''
+    Save point cloud to the destination given in the filename
+    x can be list of inputs (Nx3) capsules or numpy array of N x 3
+    '''
+
+    label_map = []
+    if isinstance(x, list):
+        
+        pointcloud = []
+        labels = create_color_samples(len(x))
+        for i in range(len(x)):
+            pts = x[i]
+            # print(pts.shape, "vis")
+            pts = convert_tensor_2_numpy(pts)
+
+            pointcloud.append(pts)
+            label_map.append(np.repeat(labels[i:(i + 1)], pts.shape[0], axis = 0))
+        
+        # x = np.concatenate(x, axis = 0)
+        pointcloud = np.concatenate(pointcloud, axis = 0)
+        x = pointcloud.copy()
+        label_map = np.concatenate(label_map, axis = 0)
+    else:
+        x = convert_tensor_2_numpy(x)
+        label_map = np.ones((len(x), 3)) * 0.5
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(x)
+    pcd.colors = o3d.utility.Vector3dVector(label_map)
+
+    o3d.io.write_point_cloud(filename, pcd)
 
 def diameter(x, axis=-2, keepdims=True):
     return torch.max(x, dim=axis, keepdims=keepdims).values - torch.min(x, dim=axis, keepdims=keepdims).values
