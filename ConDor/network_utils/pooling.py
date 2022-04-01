@@ -2,6 +2,7 @@ import tensorflow as tf
 import math
 from tensorflow.python.keras.layers import AveragePooling2D, AveragePooling1D, MaxPooling1D, MaxPooling2D
 import numpy as np
+import h5py
 
 """
 computes unique elements y in a 1D tensor x
@@ -375,5 +376,15 @@ def aligned_kdtree_indexing_(x):
     y, points_idx, points_idx_inv = kdtree_indexing_(x)
     return y, points_idx, points_idx_inv, v
 
+if __name__=="__main__":
 
+    x = tf.random.uniform((2, 1024, 3))
+    filename = "/home/rahul/research/data/sapien_processed/train_refrigerator.h5"
+    f = h5py.File(filename, "r")
+    x = f["data"][:2]
+    y, kd, kd_2 = kdtree_indexing_(x)
 
+    print(x, x.shape, y, y.shape)
+
+    print(kd, kd.shape)
+    print(kd_2, kd_2.shape)

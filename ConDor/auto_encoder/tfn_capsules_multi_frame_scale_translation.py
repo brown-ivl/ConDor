@@ -258,6 +258,7 @@ class TFN_all(tf.keras.Model):
         for i in range(len(self.radius)):
             pi = kd_pooling_1d(points[-1], int(num_points_[i] / num_points_[i + 1]))
             # pi = Jitter(self.jitter_scale[i])(pi)
+            # print(pi.shape, int(num_points_[i] / num_points_[i + 1]))
             points.append(pi)
 
         yzx = []
@@ -297,17 +298,32 @@ class TFN_all(tf.keras.Model):
             else:
                 y['1'] = yzx[i + 1]
 
-            y = apply_layers(y, self.equivariant_weights[i])
+            # print("BEFORE")
+            # for key in y:
+            #     print(y[key].shape, " ",key)
+            # print("y[1]: before", y["1"].shape)
+            y = apply_layers(y, self.equivariant_weights[i]) # B, conv, 2*l + 1, d
+            # print("AFTER")
+            # for key in y:
+            #     print(y[key].shape, " ",key)
+            
+
+            # print("Shape after equivariant layers:")
+            # for key in y:
+            #     print(key, " ", y[key].shape) 
             y = SphericalHarmonicsEval(l_max=self.l_max_out[i], base=self.S2).compute(y)
             y = self.bn[i](y)
             y = Activation('relu')(y)
+            # print(y.shape, "mlp")
             y = apply_mlp(y, self.mlp[i])
+            # print(y.shape, "MLP")
             if i < len(self.radius) - 1:
                 y = SphericalHarmonicsCoeffs(l_max=self.l_max_out[i], base=self.S2).compute(y)
 
 
         y = tf.reduce_max(y, axis=1, keepdims=False)
 
+        # print(y.shape, "features")
         y_ = y
         y_translation = y
         basis_list = []

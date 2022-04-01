@@ -2,6 +2,13 @@ import numpy as np
 import tensorflow as tf
 from sympy import *
 from SO3_CNN.sampling import SO3_sampling_from_S2, tf_polyhedrons
+def tf_fibonnacci_sphere_sampling(num_pts):
+    indices = np.arange(0, num_pts, dtype=float) + 0.5
+    phi = np.arccos(1 - 2*indices/num_pts)
+    theta = np.pi * (1 + 5**0.5) * indices
+    x, y, z = np.cos(theta) * np.sin(phi), np.sin(theta) * np.sin(phi), np.cos(phi)
+    S2 = np.stack([x, y, z], axis=-1)
+    return tf.convert_to_tensor(S2, dtype=tf.float32)
 
 def associated_legendre_polynomial(l, m, z, r2):
     P = 0
@@ -270,7 +277,7 @@ class SphericalHarmonicsEval:
         self.types = y.keys()
         Y = []
         for l in self.types:
-            Y.append(tf.reshape(y[l], (-1, 2*int(l)+1)))
+            Y.append(tf.reshape(y[l], (-1, 2*int(l)+1))) # v, sum 2 * l + 1 = 16
         self.Y = tf.concat(Y, axis=-1)
 
     def compute(self, x):
@@ -331,3 +338,18 @@ class SphericalHarmonicsCoeffs:
 
     def get_samples(self):
         return self.S2
+
+
+if __name__ == "__main__":
+
+    S2 = tf_fibonnacci_sphere_sampling(64)
+    y = {}
+
+    for i in range(4):
+        y[str(i)] = (tf.ones((2, 16, 2*i + 1, 128)) * tf.reshape(tf.range(16, dtype = tf.float32), (1, -1, 1, 1)))
+    x = y.copy()
+    y = SphericalHarmonicsEval(l_max=3, base=S2).compute(y)
+    y = SphericalHarmonicsCoeffs(l_max=3, base=S2).compute(y)
+    for key in y:
+        print(y[key], y[key].shape)
+    # print(y, y.shape)

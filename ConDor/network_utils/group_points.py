@@ -129,7 +129,6 @@ def compute_patches_(source, target, sq_distance_mat, num_samples, spacing, radi
         mask = tf.ones((batch_size, num_points_source))
     # print(mask, "mask")
     patch_size = tf.gather_nd(mask, patches_idx)
-    print(patch_size)
     patches_size = tf.reduce_sum(patch_size, axis=-1, keepdims=False)
     patches_dist = tf.sqrt(tf.maximum(sq_patches_dist, 0.000000001))
     patches_dist = tf.divide(patches_dist, rad)
@@ -220,5 +219,5 @@ if __name__ == "__main__":
     y = tf.ones((2, N_pts, 3)) * tf.expand_dims(tf.expand_dims(tf.range(start, N_pts + start, dtype=tf.float32), -1), 0)
     # print(x, y)
     out = gi({"source points": x, "target points": y})
-    # for k in out:
-    #     print(out[k], out[k].shape, " ", k)
+    for k in out:
+        print(out[k], out[k].shape, " ", k)
