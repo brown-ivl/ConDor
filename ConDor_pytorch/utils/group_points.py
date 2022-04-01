@@ -28,16 +28,21 @@ def gather_idx(x, idx):
 
     """
     x - B, N, 3
-    idx - B, N, K
+    idx - B, N, K, 2/3
 
     out - B, N, K, 3
     """
     num_idx = idx.shape[-1]
+    
+    if idx.shape[-1] == 3:
+        if len(x.shape) == 3:
+            out = x[idx[..., 0], idx[..., 1], idx[..., 2]]
+            out[(idx[..., 2] < 0) * (idx[..., 1] < 0)] = 0
+            return out
 
     if len(x.shape) == 2:
         out = x[idx[..., 0], idx[..., 1]]
         out[idx[..., 1] < 0] = 0
-    
     else:
         out = x[idx[..., 0], idx[..., 1], :]
         out[idx[..., 1] < 0, :] = 0
@@ -45,27 +50,7 @@ def gather_idx(x, idx):
     # print(idx[..., 1].shape, out.shape)
 
     return out
-    # batch_size, num_points = x.shape[:2]
-    # num_points = idx.shape[..., 0].shape[-1]
-    # idx_base = (torch.arange(x.shape[0]).view(-1, 1, 1))* num_points
-    # _0 = torch.zeros_like(idx)
-    # # print(idx, _0)
 
-    # # ############# TENSORFLOW OUTPUTS ZERO IF NEGATIVE INDICES.
-    # idx_out = idx + idx_base.type_as(idx) 
-    # idx_mask = (idx < 0).view(-1)
-    # idx_out = idx_out.view(-1)
-    
-    # out = x.view(batch_size*num_points, -1)[idx_out, :]
-    # out[idx_mask, :] = 0
-
-    
-    # if len(x.shape) == 2:
-    #     out = out.view(batch_size, num_points, -1)
-    # else:
-    #     out = out.view(batch_size, num_points, -1, 3)
-
-    # return out
 
 def compute_patches_(source, target, sq_distance_mat, num_samples, spacing, radius, source_mask=None):
     batch_size = source.shape[0]
