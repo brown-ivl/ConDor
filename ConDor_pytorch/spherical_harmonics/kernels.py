@@ -285,6 +285,7 @@ def np_zernike_kernel(d, n, l):
 def torch_eval_monom_basis(x, d, idx=None):
     """
     evaluate monomial basis up to degree d
+    x - B, N, K, 3
     """
 
     batch_size = x.shape[0]
@@ -306,6 +307,12 @@ def torch_eval_monom_basis(x, d, idx=None):
 
 
 class SphericalHarmonicsGaussianKernels(torch.nn.Module):
+
+    """
+        Computes steerable kernel for point clouds. Eqn. 13 and Eqn. 4 of paper
+        https://openaccess.thecvf.com/content/CVPR2021/papers/Poulenard_A_Functional_Approach_to_Rotation_Equivariant_Non-Linearities_for_Tensor_Field_CVPR_2021_paper.pdf
+    
+    """
     def __init__(self, l_max, gaussian_scale, num_shells, transpose=False, bound=True):
         super(SphericalHarmonicsGaussianKernels, self).__init__()
         self.l_max = l_max
@@ -325,34 +332,55 @@ class SphericalHarmonicsGaussianKernels(torch.nn.Module):
 
 
     def forward(self, x):
+        
         if "patches dist" in x:
-            patches_dist = x["patches dist"].unsqueeze(-1)
+            patches_dist = x["patches dist"].unsqueeze(-1) # B, N, K, 1
         else:
             patches_dist = torch.linalg.norm(x["patches"], dim=-1, keepdims=True)
-        normalized_patches = x["patches"] / torch.maximum(patches_dist, torch.tensor(0.000001).type_as(x["patches"]))
+
+        normalized_patches = x["patches"] / torch.maximum(patches_dist, torch.tensor(0.000001).type_as(x["patches"])) # Normalize by max dist to make it [0, 1] B, N, K, 3
+
         if self.transpose:
             normalized_patches = -normalized_patches
-        # print(normalized_patches.shape)
+        
+        # Obtain spherical harmonics for each patch
         monoms_patches = torch_eval_monom_basis(normalized_patches, self.l_max, idx=self.monoms_idx)
-        # print(self.Y.shape)
+
+        # Y^l_m(x_j - y_i)
         sh_patches = torch.einsum('ij,bvpj->bvpi', self.Y.type_as(monoms_patches), monoms_patches)
+
+        # shells_rad = r / (n_r - 1) = rj
         shells_rad = torch.arange(self.num_shells).type_as(monoms_patches) / (self.num_shells-1)
+        shells_rad = torch.reshape(shells_rad, (1, 1, 1, -1)) # 1, 1, 1, num_shells
+        
+        # x^2 - rj
+        shells = patches_dist - shells_rad # B, N, K, 1 - 1, 1, 1, num_shells = B, N, K, num_shells
 
-        shells_rad = torch.reshape(shells_rad, (1, 1, 1, -1))
-        shells = patches_dist - shells_rad
+        # self.gaussian_scale = -ln(2)*d**2
+        # shells = exp(-ln(2) * d**2 * (x_2 - r_j)**2)
         shells = torch.exp(-self.gaussian_scale*(shells * shells))
-        shells_sum = torch.sum(shells, dim=-1, keepdims=True)
-        shells = (shells / torch.maximum(shells_sum, torch.tensor(0.000001).type_as(shells)))
 
-        shells = shells.unsqueeze(-2)
+        # denominator is shells_sum
+        shells_sum = torch.sum(shells, dim=-1, keepdims=True)
+        
+        # compute kernel 
+        # shells = exp(-ln(2) * d**2 * (x_2 - r_j)**2) / sum_{k=0}^{d-1} exp(-ln(2) * d**2 * (x_2 - r_k)**2)
+        shells = (shells / torch.maximum(shells_sum, torch.tensor(0.000001).type_as(shells))) # B, N, K, num_shells
+
+        # Steerable kernel calculated
+        shells = shells.unsqueeze(-2) # B, N, K, 1, num_shells
         if self.bound:
             shells = torch.where(patches_dist.unsqueeze(-1) <= torch.tensor(1.).type_as(shells), shells, torch.tensor(0.).type_as(shells))
 
         sh_patches = sh_patches.unsqueeze(-1)
+
+        # Shells * spherical harmonics of points
         sh_patches = shells * sh_patches
 
 
         # L2 norm
+        # Calculate c_{irl} term (Eqn 14)
+        # \sum_{j \sim i} (x_j^{k} - x_i^{k + 1})^{2}
         l2_norm = torch.sum((sh_patches * sh_patches), dim=2, keepdims=True)
         l2_norm = torch.split(l2_norm, split_size_or_sections=self.split_size, dim=-2)
         Y = []
@@ -365,6 +393,8 @@ class SphericalHarmonicsGaussianKernels(torch.nn.Module):
         l2_norm = torch.maximum(l2_norm, torch.tensor(1e-8).type_as(l2_norm))
         # print(l2_norm.shape)
         l2_norm = l2_norm[..., self.sh_idx, :]
+
+        # divide by c_{irl}
         sh_patches = (sh_patches / (l2_norm + 1e-6))
 
         return sh_patches

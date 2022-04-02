@@ -123,6 +123,13 @@ class GroupPoints(torch.nn.Module):
         """
         :param x: [source, target]
         :return: [patches_idx_source, num_incident_points_target]
+
+        Returns:
+            source patches - B, N, K, 3
+            patches idx source - B, N, K, 2
+            patches size source - B, N
+            patches radius source - B, 1, 1
+            patches dist source - B, N, K
         """
         assert isinstance(x, dict)
         source = x["source points"]
@@ -185,7 +192,7 @@ class GroupPoints(torch.nn.Module):
 
 if __name__ == "__main__":
 
-    N_pts = 10
+    N_pts = 100
     start = 10
     x = torch.ones((2, N_pts, 3)) * torch.arange(N_pts).unsqueeze(-1).unsqueeze(0)
     y = torch.ones((2, N_pts, 3)) * torch.arange(start, N_pts + start).unsqueeze(-1).unsqueeze(0)
@@ -194,4 +201,4 @@ if __name__ == "__main__":
     out = gi({"source points": x, "target points": y})
 
     for k in out:
-        print(out[k], out[k].shape, " ", k)
+        print(k, " ", out[k].shape)#, " ", k)
