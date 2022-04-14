@@ -24,7 +24,7 @@ Training and testing ConDor full model.
 
 1. In ```cfgs/config_capsules_multi.yaml``` change the dataset path to the downloaded dataset.
 
-```yaml
+```
 # In cfgs/config_capsules_multi.yaml
 dataset:
 	path: <path_to_dataset> # change dataset root directory path
@@ -72,7 +72,7 @@ python3 vis_utils.py --base_path "path_to_pointclouds_directory"  --start 0 --nu
 
 1. In ```cfgs/config_capsules_exp.yaml``` change the dataset path to the downloaded dataset.
 
-```yaml
+```
 # In cfgs/config_capsules_exp.yaml
 dataset:
 	path: <path_to_dataset> # change dataset root directory path
