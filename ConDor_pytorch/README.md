@@ -29,12 +29,12 @@ Training and testing ConDor full model.
 ```
 # In configs/ConDor.yaml
 dataset:
-  root: "/home/rahul/research/data/shapenet_single_class/data_hdf5"
+  root: <change_path_to_dataset>
   ...
   ...
-  train_files: ["train_chair.h5"]
-  test_files: ["test_chair.h5"]
-  val_files: ["val_chair.h5"]
+  train_files: ["train_plane.h5"]
+  test_files: ["val_plane.h5"]
+  val_files: ["val_plane.h5"]
 ```
 
 2. Run the code below
@@ -43,8 +43,6 @@ dataset:
 # Run the code to train
 CUDA_VISIBLE_DEVICES=0 python3 main.py
 ```
-
-#### 
 
 #### Testing
 

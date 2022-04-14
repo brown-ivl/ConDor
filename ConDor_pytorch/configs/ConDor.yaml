@@ -61,12 +61,12 @@ scheduler:
     gamma: 0.1
 
 dataset:
-  root: "/home/rahul/research/data/shapenet_single_class/data_hdf5"
+  root: "../dataset/ShapeNetAtlasNetH5_1024"
   file: "h5_dataset"
   type: "H5Loader"
-  train_files: ["train_chair.h5"]
-  test_files: ["test_chair.h5"]
-  val_files: ["val_chair.h5"]
+  train_files: ["train_plane.h5"]
+  test_files: ["val_plane.h5"]
+  val_files: ["val_plane.h5"]
   args:
     n_points: 1024
   loader:
