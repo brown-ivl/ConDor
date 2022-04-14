@@ -6,7 +6,7 @@ from utils.losses import sq_distance_mat
 
 from utils.data_prep_utils import kdtree_indexing, kdtree_indexing_, compute_centroids, tf_random_rotate, tf_center, partial_shapes
 from trainers.trainer_siamese import Trainer
-from utils.helper_functions import slice_idx_data, orthonormalize_basis, compute_l2_loss, normalize_caps
+from utils.helper_functions import slice_idx_data, orthonormalize_basis, compute_l2_loss, normalize_caps, convert_yzx_to_xyz_basis
 import open3d as o3d
 from utils.vis_utils import save_pointcloud, distribute_capsules
 import numpy as np
@@ -300,3 +300,12 @@ class TrainerMultiFrame(Trainer):
             save_pointcloud(pointcloud_view, save_file_name + "_full_input_pred_frame_%d.ply" % view)
             save_pointcloud(pointcloud_view_partial, save_file_name + "_partial_input_pred_frame_%d.ply" % view)
 
+        basis_instance_to_canonical = tf.linalg.pinv(convert_yzx_to_xyz_basis(output_dict["orth_basis"]))
+
+        
+        canonical_cloud = (tf.einsum('bij,bkj->bki', basis_instance_to_canonical, output_dict["x"]))
+
+        canonical_cloud_splits = distribute_capsules(canonical_cloud, normalized_caps)
+        save_pointcloud(canonical_cloud, save_file_name + "_canonical_pointcloud_full.ply")
+
+        save_pointcloud( canonical_cloud_splits, save_file_name + "_canonical_pointcloud_full_splits.ply")
