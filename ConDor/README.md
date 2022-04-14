@@ -51,7 +51,7 @@ python3 main.py
 ```bash
 # Test the trained model
 # weight files are stored at path outputs/<date_of_run_train>/<time_of_run_train>/checkpoints/weights_model.h5 
-python3 tester.py model.weights="<path_to_trained_weights>" 
+python3 tester.py model.weights="<path_to_trained_weights>" test.max_iter=<max_number_of_models>
 ```
 
 2. After running the test script you will find a new directory with stored pointclouds at location `outputs/<date_of_run_test>/<time_of_run_test>/pointclouds/`
@@ -59,7 +59,7 @@ python3 tester.py model.weights="<path_to_trained_weights>"
 3. Visualize the pointclouds
 
 ```bash
-python3 vis_utils.py --base_path "path_to_pointclouds_directory"  --start 0 --num <max_num_pointclouds_to_visualize> --pcd canonical_parts.ply
+python3 vis_utils.py --base_path "path_to_pointclouds_directory"  --start 0 --num <max_num_pointclouds_to_visualize> --pcd canonical_pointcloud_full_splits.ply
 ```
 
 
@@ -101,7 +101,7 @@ python3 main_exp.py
 ```bash
 # Test the trained model
 # weight files are stored at path outputs/<date_of_run_train>/<time_of_run_train>/checkpoints/weights_model.h5 
-python3 tester_exp.py model.weights="<path_to_trained_weights>" 
+python3 tester_exp.py model.weights="<path_to_trained_weights>" test.max_iter=<max_number_of_models>
 ```
 
 2. After running the test script you will find a new directory with stored pointclouds at location `outputs/<date_of_run_test>/<time_of_run_test>/pointclouds/`
@@ -109,6 +109,6 @@ python3 tester_exp.py model.weights="<path_to_trained_weights>"
 3. Visualize the pointclouds
 
 ```bash
-python3 vis_utils.py --base_path "path_to_pointclouds_directory"  --start 0 --num <max_num_pointclouds_to_visualize> --pcd canonical_parts.ply
+python3 vis_utils.py --base_path "path_to_pointclouds_directory"  --start 0 --num <max_num_pointclouds_to_visualize> --pcd canonical_pointcloud_full_splits.ply
 ```
 
