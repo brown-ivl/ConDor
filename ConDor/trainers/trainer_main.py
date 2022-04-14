@@ -253,6 +253,7 @@ class TrainerMultiFrame(Trainer):
 
 
         return {"centroids_partial": centroids_partial, 
+        "orth_basis": orth_basis,
         "centroids": centroids, 
         "inv": inv, "p_inv": p_inv, 
         "pcd_caps": pcd_caps, 
