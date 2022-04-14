@@ -297,4 +297,4 @@ dependencies:
     - wcwidth==0.2.5
     - webencodings==0.5.1
     - widgetsnbextension==3.6.0
-prefix: /home/rahul/anaconda3/envs/vnn
+prefix: /home/rahul/anaconda3/envs/ConDor_torch

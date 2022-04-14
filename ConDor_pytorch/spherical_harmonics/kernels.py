@@ -121,6 +121,11 @@ class ShGaussianKernelConv(torch.nn.Module):
         self.l_max_out = l_max_out
         # self.transpose = transpose
         self.num_source_points = num_source_points
+        
+        
+        # Clebsh Gordon coeffs decompose a tensor into expansion of eigenstates of angular momentum
+        # Youtube video: https://www.youtube.com/watch?v=UPyf9ntr-B8
+        # Couples two different type l features with each other 
         self.Q = torch_clebsch_gordan_decomposition(l_max=max(l_max_out, l_max),
                                                  sparse=False,
                                                  output_type='dict',
@@ -203,7 +208,7 @@ def spherical_harmonics_3D_monomial_basis(l, monoms_basis):
         Y = poly(Y, x, y, z)
         for i in range(n_):
             M[m, i] = N(Y.coeff_monomial(monoms_basis[i]))
-    return M
+    return M # 2l + 1 , n_
 
 """
 computes the coefficients of the Zernike polynomials in the monomial basis
@@ -286,6 +291,8 @@ def torch_eval_monom_basis(x, d, idx=None):
     """
     evaluate monomial basis up to degree d
     x - B, N, K, 3
+
+    y - B, N, K, 20
     """
 
     batch_size = x.shape[0]
@@ -295,9 +302,9 @@ def torch_eval_monom_basis(x, d, idx=None):
         idx = torch_monomial_basis_3D_idx(d)
     y = []
     for i in range(3):
-        pows = torch.reshape(torch.arange(d+1), (1, 1, d+1)).to(torch.float32)
-        yi = torch.pow(x[..., i].unsqueeze(-1), pows.type_as(x))
-        y.append(yi[..., idx[..., i]])
+        pows = torch.reshape(torch.arange(d+1), (1, 1, d+1)).to(torch.float32) # 1, 1, num_pow
+        yi = torch.pow(x[..., i].unsqueeze(-1), pows.type_as(x)) # B, N, K, num_pow
+        y.append(yi[..., idx[..., i]])        
     y = torch.stack(y, dim=-1)
     y = torch.prod(y, dim=-1, keepdims=False)
     return y
@@ -344,10 +351,11 @@ class SphericalHarmonicsGaussianKernels(torch.nn.Module):
             normalized_patches = -normalized_patches
         
         # Obtain spherical harmonics for each patch
-        monoms_patches = torch_eval_monom_basis(normalized_patches, self.l_max, idx=self.monoms_idx)
+        monoms_patches = torch_eval_monom_basis(normalized_patches, self.l_max, idx=self.monoms_idx) # B, N, K, 20 (sum 2*l+1 less than or equal)
+        # print(monoms_patches.shape, self.Y.shape)
 
         # Y^l_m(x_j - y_i)
-        sh_patches = torch.einsum('ij,bvpj->bvpi', self.Y.type_as(monoms_patches), monoms_patches)
+        sh_patches = torch.einsum('ij,bvpj->bvpi', self.Y.type_as(monoms_patches), monoms_patches) # B, N, K, 16 / 9
 
         # shells_rad = r / (n_r - 1) = rj
         shells_rad = torch.arange(self.num_shells).type_as(monoms_patches) / (self.num_shells-1)

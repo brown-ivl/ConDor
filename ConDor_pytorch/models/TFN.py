@@ -88,9 +88,8 @@ class TFN(torch.nn.Module):
         num_points_[0] = x.shape[1]
 
         for i in range(len(self.radius)):
+            # Down sampling points for different resolutions
             pi = kd_pooling_1d(points[-1], int(num_points_[i] / num_points_[i + 1]))
-            # print(pi.shape, int(num_points_[i] / num_points_[i + 1]))
-            # pi = Jitter(self.jitter_scale[i])(pi)
             points.append(pi)
 
         yzx = []
@@ -102,7 +101,9 @@ class TFN(torch.nn.Module):
             
             # Finding nearest neighbors of each point to compute graph features
             gi = self.grouping_layers[i]({"source points": points[i], "target points": points[i + 1]})
-
+            # gi["patches source"] - nearest neighbor points - B, N, K, 3
+            # gi["patches dist source"] - distance to nearest neighbors - B, N, K
+            
             # Computing kernels for patch neighbors
             ki = self.kernel_layers[i]({"patches": gi["patches source"], "patches dist": gi["patches dist source"]})
 
