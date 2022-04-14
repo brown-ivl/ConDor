@@ -52,13 +52,13 @@ loss:
 
 
 dataset:
-  path: "/gpfs/scratch/rsajnani/rsajnani/research/dataset/Atlasnet_core"
+  path: "../dataset/ShapeNetAtlasNetH5_1024"
   batch_size: 16
   shuffle: True
   num_points: 1024
-  val_list: ["val_car.h5"]
-  train_list: ["train_car.h5"]
-  test_list: ["val_car.h5"]
+  val_list: ["val_plane.h5"]
+  train_list: ["train_plane.h5"]
+  test_list: ["val_plane.h5"]
 
 # dataset:
 #   path: "/scratch/rahulsajnani/research/brown/test_final/EquiNet/NOCS-dataset-generator/src/"
