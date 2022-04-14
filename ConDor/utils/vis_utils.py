@@ -3,6 +3,7 @@ import open3d as o3d
 import numpy as np
 import tensorflow as tf
 import argparse, os, sys
+import glob, os
 
 def create_color_samples(N):
     '''
@@ -77,26 +78,41 @@ def distribute_capsules(inv, caps):
     return out
 
 
-def visualize_outputs(base_path, pointcloud_name, num_list = [0, 1, 2, 3, 4, 5, 6, 7, 8], spacing = 1.0):
+def visualize_outputs(base_path, pointcloud_name, start = 0, max_num = 10, spacing = 1.0, skip = 1):
     '''
     Visualize point clouds in open3D 
     '''
 
-    filename = [("%d_" % num) + pointcloud_name for num in num_list]
+    filename = glob.glob(os.path.join(base_path, "") + "**_" + pointcloud_name)
+    filename.sort()
+    filename_2 = []
+    for f in filename:
+        # print(os.path.join(base_path, "") + f.split("/")[-1].split("_")[0] +"_" + pointcloud_name, f)
+        if (os.path.join(base_path, "") + f.split("/")[-1].split("_")[0] +"_" + pointcloud_name) == f:
+            filename_2.append(f)
+    filename = filename_2
+    filename = filename[start::skip]
+    filename = filename[:max_num]
     # print(filename)
     num_pcds = len(filename)
+    if skip != 1:
+        num_pcds = len(filename) // skip
     rows = np.floor(np.sqrt(num_pcds))
     pcd_list = []
     pcd_iter = 0
-
+    pcd_index = 0
     for pcd_file in filename:
-        pcd = o3d.io.read_point_cloud(os.path.join(base_path, pcd_file))
-        column_num = pcd_iter // rows
-        row_num = pcd_iter % rows
-        vector = (row_num * spacing, column_num * spacing, 0)
-        # print(vector)
-        pcd.translate(vector)
-        pcd_list.append(pcd)
+        if pcd_iter % skip == 0:
+        
+            pcd = o3d.io.read_point_cloud(pcd_file)
+            column_num = pcd_index // rows
+            row_num = pcd_index % rows
+            vector = (row_num * spacing, column_num * spacing, 0)
+            # print(vector)
+            pcd.translate(vector)
+            pcd_list.append(pcd)
+            pcd_index += 1
+
         pcd_iter +=1
     
     o3d.visualization.draw_geometries(pcd_list)
@@ -108,17 +124,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = "Visualization script")
     parser.add_argument("--base_path", help = "Base path to folder", required = True)
     parser.add_argument("--pcd", help = "PCD string to visualize", required = True)
-    parser.add_argument("--spacing", help = "Spacing", default = 2.0)
+    parser.add_argument("--spacing", help = "Spacing", default = 2.0, type = float)
     parser.add_argument("--num_list", help = "indices", nargs="+", default = list(range(9)), type = int)
-    parser.add_argument("--start", help = "start index", default = None)
+    parser.add_argument("--start", help = "start index", default = 0, type = int)
     parser.add_argument("--num", help = "number of models", default = 9, type = int)
+    parser.add_argument("--skip", help = "number of models to skip", default = 1, type = int)
+
 
     args = parser.parse_args()
     #######################################################################
     
 
-    if args.start is not None:
-        num_list = list(range(int(args.start), int(args.start) + args.num))
-    else:
-        num_list = args.num_list
-    visualize_outputs(args.base_path, args.pcd, spacing = args.spacing, num_list = num_list)
+    visualize_outputs(args.base_path, args.pcd, spacing = args.spacing, start = args.start, max_num = args.num, skip = args.skip)
