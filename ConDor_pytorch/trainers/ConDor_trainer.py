@@ -11,6 +11,7 @@ import hydra
 from utils.pointcloud_utils import kdtree_indexing, save_pointcloud, convert_yzx_to_xyz_basis
 from scipy.spatial.transform import Rotation
 from pytorch3d.loss import chamfer_distance
+import tqdm
 
 class ConDor_trainer(pl.LightningModule):
     '''
@@ -173,7 +174,7 @@ class ConDor_trainer(pl.LightningModule):
         """
         save_keys = ["x_input", "points_inv", "y_p", "x_canonical"]
         for key in out_dict:
-            print(key)
+            #print(key)
             if key in save_keys:
                 pcd_name = save_file_name + "_" + key + ".ply"
                 save_pointcloud(out_dict[key], pcd_name)
@@ -196,9 +197,9 @@ class ConDor_trainer(pl.LightningModule):
             os.makedirs(save_directory)
 
         with torch.no_grad():
-            for i, batch in enumerate(loader):
+            for i, batch in enumerate(tqdm.tqdm(loader)):
                 if i % skip == 0:
-                    print(i)
+                    #print(i)
                     batch["pc"] = batch["pc"].cuda()
                     x = batch   
                     out, pcd_output = self.forward_pass(x, 0, return_outputs = True)
