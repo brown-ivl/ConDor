@@ -69,6 +69,9 @@ dataset:
 #   train_list: [cars_nocs_train.h5]
 #   test_list: [cars_nocs_test.h5]
 
+test:
+  max_iter: 200
+  
 save:
   path: "./checkpoints"
 utils:

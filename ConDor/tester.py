@@ -45,7 +45,7 @@ def run(cfg):
     optimizer = tf.keras.optimizers.Adam(1e-4)
 
     trainer = getattr(getattr(trainers, cfg.trainer.file), cfg.trainer.type)(cfg, autoencoder, optimizer, train_set = train_provider, val_set = val_provider, test_set = test_provider)
-    trainer.test(test_provider, "./pointclouds")
+    trainer.test(test_provider, "./pointclouds", max_iters = cfg.test.max_iter)
 
 if __name__ == '__main__':
 
