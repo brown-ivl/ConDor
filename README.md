@@ -2,7 +2,7 @@
 
 *[Rahul Sajnani](https://arxiv.org/search/cs?searchtype=author&query=Sajnani%2C+R), [Adrien Poulenard](https://arxiv.org/search/cs?searchtype=author&query=Poulenard%2C+A), [Jivitesh Jain](https://arxiv.org/search/cs?searchtype=author&query=Jain%2C+J), [Radhika Dua](https://arxiv.org/search/cs?searchtype=author&query=Dua%2C+R), [Leonidas J. Guibas](https://arxiv.org/search/cs?searchtype=author&query=Guibas%2C+L+J), [Srinath Sridhar](https://arxiv.org/search/cs?searchtype=author&query=Sridhar%2C+S)*
 
-This is the official implementation for training and testing canonicalization results presented in ConDor.
+This is the official **TensorFlow and PyTorch** implementation for training and testing canonicalization results presented in ConDor.
 
 ![Teaser image](./images/teaser.jpg)
 
