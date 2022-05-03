@@ -57,24 +57,19 @@ Please find the PyTorch implementation of ConDor and its instructions in the [Co
 If you find this work helpful, please cite this
 
 ```
-@article{DBLP:journals/corr/abs-2201-07788,
-  author    = {Rahul Sajnani and
+@InProceedings{sajnani2022_condor,
+author = {Rahul Sajnani and
                Adrien Poulenard and
                Jivitesh Jain and
                Radhika Dua and
                Leonidas J. Guibas and
                Srinath Sridhar},
-  title     = {ConDor: Self-Supervised Canonicalization of 3D Pose for Partial Shapes},
-  journal   = {CoRR},
-  volume    = {abs/2201.07788},
-  year      = {2022},
-  url       = {https://arxiv.org/abs/2201.07788},
-  eprinttype = {arXiv},
-  eprint    = {2201.07788},
-  timestamp = {Fri, 21 Jan 2022 13:57:15 +0100},
-  biburl    = {https://dblp.org/rec/journals/corr/abs-2201-07788.bib},
-  bibsource = {dblp computer science bibliography, https://dblp.org}
+title = {ConDor: Self-Supervised Canonicalization of 3D Pose for Partial Shapes},
+booktitle = {The IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+month = {June},
+year = {2022}
 }
+
 ```
 
 
