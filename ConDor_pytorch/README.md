@@ -12,7 +12,7 @@ Make sure you have Anaconda or Miniconda installed before you proceed to load th
 
 ```bash
 # Creating the conda environment and loading it
-conda env create -f environment.yaml
+conda env create -f environment.yml
 conda activate ConDor_torch
 ```
 
