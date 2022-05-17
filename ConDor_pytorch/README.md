@@ -51,7 +51,7 @@ CUDA_VISIBLE_DEVICES=0 python3 main.py
 ```bash
 # Test the trained model
 # weight files are stored at path outputs/<date_of_run_train>/<time_of_run_train>/checkpoints/ 
-CUDA_VISIBLE_DEVICES=0 python3 tester.py 'model.weights="<model_weights_path>"' 'test.skip=1'
+CUDA_VISIBLE_DEVICES=0 python3 tester.py 'test.weights="<model_weights_path>"' 'test.skip=1'
 ```
 
 2. After running the test script you will find a new directory with stored pointclouds at location `outputs/<date_of_run_test>/<time_of_run_test>/pointclouds/`
