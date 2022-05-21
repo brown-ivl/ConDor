@@ -54,6 +54,7 @@ def torch_monomial_basis_coeffs(polynomials, monoms_basis, dtype=torch.float32):
     return torch.from_numpy(np_monomial_basis_coeffs(polynomials, monoms_basis)).to(dtype)
 
 def torch_spherical_harmonics_(l, matrix_format=True):
+    
     monoms = monoms_3D(l)
     sph_polys = []
     x, y, z = symbols("x y z")
@@ -64,34 +65,41 @@ def torch_spherical_harmonics_(l, matrix_format=True):
         coeffs = torch.reshape(coeffs, (2*l+1, -1))
     return coeffs
 
-def zernike_monoms(x, max_deg):
-    m = int(max_deg / 2.)
-    n2 = torch.sum(x * x, dim=-1, keepdims=True)
-    n2 = n2.unsqueeze(-1)
-    p = [torch.ones(n2.shape).type_as(x)]
-    for m_ in range(m):
-        p.append(p[-1] * n2)
 
-    y = torch_spherical_harmonics(l_max=max_deg).compute(x)
-    for l in y:
-        y[l] = y[l].unsqueeze(-1)
+class zernike_monoms:
+    def __init__(self,max_deg=3):
+        self.max_deg = max_deg
+        self.harmonics = torch_spherical_harmonics(l_max=max_deg)
+    
+    def compute(self,x):
+        max_deg = self.max_deg
+        m = int(max_deg / 2.)
+        n2 = torch.sum(x * x, dim=-1, keepdims=True)
+        n2 = n2.unsqueeze(-1)
+        p = [torch.ones(n2.shape).type_as(x)]
+        for m_ in range(m):
+            p.append(p[-1] * n2)
 
-    z = dict()
-    for d in range(max_deg + 1):
-        z[d] = []
-    for l in y:
-        l_ = int(l)
-        for d in range(m + 1):
-            d_ = 2 * d + l_
-            if d_ <= max_deg:
-                # print(p[d].shape)
-                # print(y[l].shape)
-                zd = (p[d] * y[l])
-                z[l_].append(zd)
-    for d in z:
-        z[d] = torch.cat(z[d], dim=-1)
-    return z
+        y = self.harmonics.compute(x)
+        for l in y:
+            y[l] = y[l].unsqueeze(-1)
 
+        z = dict()
+        for d in range(max_deg + 1):
+            z[d] = []
+        for l in y:
+            l_ = int(l)
+            for d in range(m + 1):
+                d_ = 2 * d + l_
+                if d_ <= max_deg:
+                    # print(p[d].shape)
+                    # print(y[l].shape)
+                    zd = (p[d] * y[l])
+                    z[l_].append(zd)
+        for d in z:
+            z[d] = torch.cat(z[d], dim=-1)
+        return z
+        
 
 class torch_spherical_harmonics:
     def __init__(self, l_max=3, l_list=None):

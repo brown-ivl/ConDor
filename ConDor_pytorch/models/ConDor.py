@@ -10,6 +10,7 @@ from utils.pooling import kd_pooling_1d
 class ConDor(torch.nn.Module):
 
     def __init__(self, num_capsules = 10, num_frames = 1, sphere_samples = 64, bn_momentum = 0.75, mlp_units = [[32, 32], [64, 64], [128, 256]]):
+ 
         super(ConDor, self).__init__()
 
         self.bn_momentum = 0.75
@@ -17,7 +18,8 @@ class ConDor(torch.nn.Module):
         self.l_max = [3, 3, 3]
         self.l_max_out = [3, 3, 3]
         self.num_shells = [3, 3, 3]
-
+        
+        
         self.num_capsules = num_capsules
         self.num_frames = num_frames
         self.mlp_units = mlp_units
@@ -48,6 +50,10 @@ class ConDor(torch.nn.Module):
         self.segmentation_layer_params = [256, 128, num_capsules]
         self.capsules_mlp = MLP_layer(in_channels = 384, units=[256, 128, num_capsules], bn_momentum=self.bn_momentum)
         self.num_frames = num_frames
+        self.type_1                     = SphericalHarmonicsCoeffs(l_list=[1], base=self.S2)
+        self.latent_Ceoffs              = SphericalHarmonicsCoeffs(l_max=self.l_max_out[-1], base=self.S2)
+        self.zernike_monoms_harmonics   = zernike_monoms(self.l_max_out[-1])
+        
 
 
     def forward(self, x):
@@ -63,18 +69,20 @@ class ConDor(torch.nn.Module):
         E = []
         # Equivariant translation
         T = []
-
+        
         # Compute equivariant layers
         for frame_num in range(self.num_frames):
             basis = self.basis_mlp[frame_num](F)
             basis = self.basis_layer[frame_num](basis)
-            basis = type_1(basis, self.S2)
+            y_dict = self.type_1.compute(basis)
+            basis = y_dict['1']    
             basis = torch.nn.functional.normalize(basis, dim=-1, p = 2, eps = 1e-6)
             E.append(basis)
 
         # Predicting amodal translation
         translation = self.translation_mlp(F_translation)
-        translation = type_1(translation, self.S2)
+        y_dict = self.type_1.compute(translation)
+        translation = y_dict['1'] 
         translation = self.translation_layer(translation)
         translation = torch.stack([translation[:, 2], translation[:, 0], translation[:, 1]], dim = -1)
         T.append(translation)
@@ -82,9 +90,9 @@ class ConDor(torch.nn.Module):
 
         latent_code = self.code_mlp(F)
         latent_code = self.code_layer(latent_code)
-        latent_code = SphericalHarmonicsCoeffs(l_max=self.l_max_out[-1], base=self.S2).compute(latent_code)
-
-        z = zernike_monoms(x, self.l_max_out[-1])
+        latent_code = self.latent_Ceoffs.compute(latent_code)
+        
+        z = self.zernike_monoms_harmonics.compute(x)
         points_code = []
 
         points_inv = None

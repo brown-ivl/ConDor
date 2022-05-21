@@ -69,6 +69,9 @@ class TFN(torch.nn.Module):
         self.mlp = torch.nn.Sequential(*self.mlp)
         self.bn = torch.nn.Sequential(*self.bn)
         self.equivariant_weights = torch.nn.Sequential(*self.equivariant_weights)
+        
+        self.Inv_SphericalHarmonicsEval = SphericalHarmonicsEval(l_max=self.l_max_out[i], base=self.S2)
+        self.Fwd_SphericalHarmonicsCoeffs = SphericalHarmonicsCoeffs(l_max=self.l_max_out[i], base=self.S2)
 
 
         
@@ -143,7 +146,7 @@ class TFN(torch.nn.Module):
             #     print(key, " ", y[key].shape) 
 
             # Inverse Spherical Harmonic Transform
-            y = SphericalHarmonicsEval(l_max=self.l_max_out[i], base=self.S2).compute(y)
+            y = self.Inv_SphericalHarmonicsEval.compute(y)
             # print(y.shape)
             y = y.permute(0, 3, 1, 2)
             y = self.bn[i](y)
@@ -153,7 +156,7 @@ class TFN(torch.nn.Module):
             # print(y.shape, "MLP")
             if i < len(self.radius) - 1:
                 # Spherical Harmonic Transform
-                y = SphericalHarmonicsCoeffs(l_max=self.l_max_out[i], base=self.S2).compute(y)
+                y = self.Fwd_SphericalHarmonicsCoeffs.compute(y)
 
         
         # print(y.shape) # B, 16, 64, 256
@@ -166,7 +169,6 @@ class TFN(torch.nn.Module):
 if __name__ == "__main__":
 
     x = torch.randn((2, 1024, 3)).cuda()
-
     model = TFN().cuda()
     F = model(x)
     print(F.shape)
