@@ -1,7 +1,7 @@
 
 model:
   file: "ConDor"
-  type: "ConDor"
+  type: "ConDor_SO3"
   args:
     num_capsules: 10 
     num_frames: 5 
@@ -11,8 +11,8 @@ model:
 
 
 trainer_file:
-  file: "ConDor_trainer"
-  type: "ConDor_trainer"
+  file: "ConDor_trainer_SO3"
+  type: "ConDor_trainer_SO3"
 
 optimizer:
   type: Adam
@@ -39,6 +39,7 @@ loss:
   scale_loss: 0.0
   translation_loss_full: 0.0
   translation_loss_partial: 1.0
+  determinant_loss: 1.0
 
 trainer:
   gpus: -1
@@ -64,9 +65,9 @@ dataset:
   root: "../dataset/ShapeNetAtlasNetH5_1024"
   file: "h5_dataset"
   type: "H5Loader"
-  train_files: ["train_plane.h5"]
-  test_files: ["val_plane.h5"]
-  val_files: ["val_plane.h5"]
+  train_files: ["train_chair.h5"]
+  test_files: ["val_chair.h5"]
+  val_files: ["val_chair.h5"]
   args:
     n_points: 1024
   loader:

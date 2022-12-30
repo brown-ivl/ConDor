@@ -169,7 +169,7 @@ class ConDor_SO3(torch.nn.Module):
         
 
         # Frame with determinant -1
-        self.symmetry_frame = torch.nn.Parameter(orthonormalize_basis(torch.randn(num_frames, 3, 3))) # F, 3, 3
+        self.symmetry_frame = torch.nn.Parameter(orthonormalize_basis(torch.randn(num_frames, 3, 2))) # F, 3, 3
         
 
 
@@ -234,8 +234,12 @@ class ConDor_SO3(torch.nn.Module):
 
         points_inv = self.points_inv_layer(points_inv)
 
+        sf_1, sf_2 = self.symmetry_frame[..., 0], self.symmetry_frame[..., 1]
 
-        out = {"T": T, "caps": capsules, "points_inv": points_inv, "E": E, "symmetry_frame": self.symmetry_frame}
+        sf_3 = torch.cross(sf_1, sf_2) # F, 3
+        symmetry_frame = torch.stack([sf_1, sf_2, -sf_3], -1)
+        
+        out = {"T": T, "caps": capsules, "points_inv": points_inv, "E": E, "symmetry_frame": symmetry_frame}
         
         return out
 

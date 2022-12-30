@@ -78,7 +78,7 @@ class ConDor_trainer_SO3(pl.LightningModule):
         orth_basis = orthonormalize_basis(basis)
 
         # determinants = torch.det(orth_basis) # B, F (det can be 1 or -1)
-        symmetry_frame = outputs["symmetry_frame"] # F, 3, 3
+        symmetry_frame = orthonormalize_basis(outputs["symmetry_frame"]) # F, 3, 3
         # identity = torch.eye(3)[None, None] # 1, 1, 3, 3
 
 
@@ -86,6 +86,7 @@ class ConDor_trainer_SO3(pl.LightningModule):
 
 
         # orth_basis = torch.einsum("bvij, bvjk->bvik", orth_basis, orth_basis_pos)
+        orth_loss = torch.mean(torch.abs(basis - orth_basis.detach()))
 
         orth_basis_symmetry = torch.einsum("bvij, vjk->bvik", orth_basis, symmetry_frame)
 
@@ -114,7 +115,6 @@ class ConDor_trainer_SO3(pl.LightningModule):
         separation_loss_basis = -torch.mean(torch.abs(basis[:, None] - basis[:, :, None]))
         l2_loss = torch.mean(torch.sqrt(torch.square(x - y_p) + 1e-8))
         chamfer_loss = chamfer_distance(x, y_p)[0]
-        orth_loss = torch.mean(torch.abs(basis - orth_basis_frames.detach()))
         determinant_loss = torch.mean(torch.abs(torch.linalg.det(symmetry_frame) + 1))
 
 
