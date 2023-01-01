@@ -88,9 +88,9 @@ class ConDor_trainer_SO3(pl.LightningModule):
         # orth_basis = torch.einsum("bvij, bvjk->bvik", orth_basis, orth_basis_pos)
         orth_loss = torch.mean(torch.abs(basis - orth_basis.detach()))
 
-        orth_basis_symmetry = torch.einsum("bvij, fjk->bvik", orth_basis, symmetry_frame)
+        orth_basis_symmetry = torch.einsum("bvij, fjk->bvik", basis, symmetry_frame)
 
-        orth_basis = torch.cat([orth_basis, orth_basis_symmetry], 1) # B, 2V, 3, 3
+        orth_basis = torch.cat([basis, orth_basis_symmetry], 1) # B, 2V, 3, 3
 
         input_pcd_pred = torch.einsum("bvij, bpj->bvpi", orth_basis, inv)
         input_pcd_pred = torch.stack([input_pcd_pred[..., 2], input_pcd_pred[..., 0], input_pcd_pred[..., 1]], dim = -1)
@@ -115,7 +115,8 @@ class ConDor_trainer_SO3(pl.LightningModule):
         separation_loss_basis = -torch.mean(torch.abs(basis[:, None] - basis[:, :, None]))
         l2_loss = torch.mean(torch.sqrt(torch.square(x - y_p) + 1e-8))
         chamfer_loss = chamfer_distance(x, y_p)[0]
-        determinant_loss = torch.mean(torch.abs(torch.linalg.det(symmetry_frame) + 1))
+        determinant_loss = torch.mean(torch.abs(torch.linalg.det(symmetry_frame) + 1)) + torch.mean(torch.abs(torch.linalg.det(basis) - 1))
+
 
 
         if self.loss_weights.l2_loss > 0.0:

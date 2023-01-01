@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 
 @hydra.main(config_path="configs", config_name="ConDor.yaml")
 def run(cfg):
-
+    torch.autograd.set_detect_anomaly(True)
     seed_everything(cfg.utils.seed)
     train_logger = eval(cfg.logging.type)(project = cfg.logging.project)
     log.info(cfg)

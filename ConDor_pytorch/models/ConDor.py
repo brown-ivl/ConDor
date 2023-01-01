@@ -169,7 +169,7 @@ class ConDor_SO3(torch.nn.Module):
         
 
         # Frame with determinant -1
-        self.symmetry_frame = torch.nn.Parameter(orthonormalize_basis(torch.randn(1, 3, 2))) # F, 3, 3
+        self.symmetry_frame = torch.nn.Parameter((torch.randn(1, 3, 2))) # F, 3, 3
         
 
 
