@@ -169,7 +169,7 @@ class ConDor_SO3(torch.nn.Module):
         
 
         # Frame with determinant -1
-        self.symmetry_frame = torch.nn.Parameter(orthonormalize_basis(torch.randn(num_frames, 3, 2))) # F, 3, 3
+        self.symmetry_frame = torch.nn.Parameter(orthonormalize_basis(torch.randn(1, 3, 2))) # F, 3, 3
         
 
 
@@ -193,7 +193,8 @@ class ConDor_SO3(torch.nn.Module):
             basis = self.basis_layer[frame_num](basis)
             y_dict = self.type_1.compute(basis)
             basis = y_dict['1']    
-            basis = torch.nn.functional.normalize(basis, dim=1, p = 2, eps = 1e-6)
+            #basis = torch.nn.functional.normalize(basis, dim=1, p = 2, eps = 1e-6)
+            basis = basis / (torch.sqrt(torch.sum(torch.square(basis), dim = 1, keepdims=True) + 1e-6) + 1e-6)
             last_axis = torch.cross(basis[..., 0], basis[..., 1]).unsqueeze(-1)
             basis = torch.cat([basis, last_axis], -1) # B, 3, 3
             # print(basis.shape)

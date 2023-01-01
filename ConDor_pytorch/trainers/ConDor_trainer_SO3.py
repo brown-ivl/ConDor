@@ -78,7 +78,7 @@ class ConDor_trainer_SO3(pl.LightningModule):
         orth_basis = orthonormalize_basis(basis)
 
         # determinants = torch.det(orth_basis) # B, F (det can be 1 or -1)
-        symmetry_frame = orthonormalize_basis(outputs["symmetry_frame"]) # F, 3, 3
+        symmetry_frame = (outputs["symmetry_frame"]) # F, 3, 3
         # identity = torch.eye(3)[None, None] # 1, 1, 3, 3
 
 
@@ -88,7 +88,7 @@ class ConDor_trainer_SO3(pl.LightningModule):
         # orth_basis = torch.einsum("bvij, bvjk->bvik", orth_basis, orth_basis_pos)
         orth_loss = torch.mean(torch.abs(basis - orth_basis.detach()))
 
-        orth_basis_symmetry = torch.einsum("bvij, vjk->bvik", orth_basis, symmetry_frame)
+        orth_basis_symmetry = torch.einsum("bvij, fjk->bvik", orth_basis, symmetry_frame)
 
         orth_basis = torch.cat([orth_basis, orth_basis_symmetry], 1) # B, 2V, 3, 3
 
