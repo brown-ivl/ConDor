@@ -4,7 +4,7 @@ model:
   type: "ConDor_SO3"
   args:
     num_capsules: 10 
-    num_frames: 5 
+    num_frames: 1
     sphere_samples: 64 
     bn_momentum: 0.75
     mlp_units: [[32, 32], [64, 64], [128, 256]]
@@ -41,6 +41,7 @@ loss:
   translation_loss_full: 0.0
   translation_loss_partial: 1.0
   determinant_loss: 1.0
+  symmetry_loss: 1.0
 
 trainer:
   gpus: -1
