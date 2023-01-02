@@ -43,6 +43,7 @@ def orthonormalize_basis(basis):
 
     out - B, 3, 3
     """
+    basis = basis + torch.randn(basis.shape).type_as(basis) * 1e-4 # Avoiding singular matrices
     u, s, v = torch.svd(basis)
     out = u @ v.transpose(-2, -1)    
 
