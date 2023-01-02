@@ -79,7 +79,7 @@ class ConDor_trainer_SO3(pl.LightningModule):
 
         num_frames = orth_basis.shape[1]
         # determinants = torch.det(orth_basis) # B, F (det can be 1 or -1)
-        symmetry_frame = (outputs["symmetry_frame"]) # F, 3, 3
+        symmetry_frame = orthonormalize_basis(outputs["symmetry_frame"]) # F, 3, 3
         # identity = torch.eye(3)[None, None] # 1, 1, 3, 3
 
 
@@ -94,7 +94,7 @@ class ConDor_trainer_SO3(pl.LightningModule):
         orth_basis = torch.cat([orth_basis, orth_basis_symmetry], 1) # B, 2V, 3, 3
 
         input_pcd_pred = torch.einsum("bvij, bpj->bvpi", orth_basis, inv)
-        pcd_inv_symm = torch.einsum("fij, bpj->bpi", symmetry_frame, inv.detach())
+        pcd_inv_symm = torch.einsum("fij, bpj->bpi", symmetry_frame, inv)
 
 
         input_pcd_pred = torch.stack([input_pcd_pred[..., 2], input_pcd_pred[..., 0], input_pcd_pred[..., 1]], dim = -1)
@@ -121,6 +121,7 @@ class ConDor_trainer_SO3(pl.LightningModule):
         #basis_instance_to_canonical = torch.pinverse(convert_yzx_to_xyz_basis(orth_basis))
         basis_instance_to_canonical = torch.pinverse(convert_yzx_to_xyz_basis(orth_basis_can))
         canonical_x = torch.einsum('bij,bkj->bki', basis_instance_to_canonical, x)
+        #print(torch.linalg.det(basis_instance_to_canonical))
         outputs["x_canonical"] = canonical_x
 
         # Losses
@@ -128,7 +129,7 @@ class ConDor_trainer_SO3(pl.LightningModule):
         l2_loss = torch.mean(torch.sqrt(torch.square(x - y_p) + 1e-8))
         chamfer_loss = chamfer_distance(x, y_p)[0]
         determinant_loss = torch.mean(torch.abs(torch.linalg.det(symmetry_frame) + 1)) + torch.mean(torch.abs(torch.linalg.det(basis) - 1))
-        symmetry_loss = chamfer_distance(pcd_inv_symm, inv.detach())[0]
+        symmetry_loss = chamfer_distance(pcd_inv_symm, inv)[0]
 
 
 
