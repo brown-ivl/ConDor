@@ -2,7 +2,7 @@
 
 *[Rahul Sajnani](https://arxiv.org/search/cs?searchtype=author&query=Sajnani%2C+R), [Adrien Poulenard](https://arxiv.org/search/cs?searchtype=author&query=Poulenard%2C+A), [Jivitesh Jain](https://arxiv.org/search/cs?searchtype=author&query=Jain%2C+J), [Radhika Dua](https://arxiv.org/search/cs?searchtype=author&query=Dua%2C+R), [Leonidas J. Guibas](https://arxiv.org/search/cs?searchtype=author&query=Guibas%2C+L+J), [Srinath Sridhar](https://arxiv.org/search/cs?searchtype=author&query=Sridhar%2C+S)*
 
-This is the official **TensorFlow and PyTorch** implementation for training and testing canonicalization results presented in ConDor.
+This is the official **TensorFlow and PyTorch** implementation for training and testing canonicalization results presented in ConDor. **The PyTorch version does not support partial shape canonicalization yet.**
 
 ![Teaser image](./images/teaser.jpg)
 
@@ -46,9 +46,9 @@ Please find the TensorFlow implementation of ConDor and its instructions in the 
 
 
 
-## PyTorch implementation
+## PyTorch implementation (Without Partical Shape Canonicalization)
 
-Please find the PyTorch implementation of ConDor and its instructions in the [ConDor_pytorch](./ConDor_pytorch) folder. This implementation is still under development.
+Please find the PyTorch implementation of ConDor and its instructions in the [ConDor_pytorch](./ConDor_pytorch) folder. This implementation is still under development. **This version does not support partial shape canonicalization yet**.
 
 
 
